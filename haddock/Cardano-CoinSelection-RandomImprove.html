@@ -8,8 +8,7 @@
  greater than or equal to <strong><em>v</em></strong>. The selected entries are then associated
  with that output, and removed from the <em>remaining UTxO set</em>.</p><p>This phase ends when every output has been associated with a selection of
  UTxO entries.</p><p>However, if the remaining UTxO set is completely exhausted before all
- outputs can be processed, the algorithm terminates and falls back to the
- <strong>Largest-First</strong> algorithm. (See <code><a href="Cardano-CoinSelection-LargestFirst.html#v:largestFirst" title="Cardano.CoinSelection.LargestFirst">largestFirst</a></code>.)</p><h3>Phase 2: Improvement</h3><p><strong>In this phase, the algorithm attempts to improve upon each of the UTxO</strong>
+ outputs can be processed, the algorithm terminates with an error.</p><h3>Phase 2: Improvement</h3><p><strong>In this phase, the algorithm attempts to improve upon each of the UTxO</strong>
  <strong>selections made in the previous phase, by conservatively expanding the</strong>
  <strong>selection made for each output.</strong></p><p>During this phase, the algorithm:</p><ul><li>processes outputs in <em>ascending order of coin value</em>.</li><li>continues to maintain the <em>remaining UTxO set</em> produced by the previous
       phase.</li><li>maintains an <em>accumulated coin selection</em>, which is initially <em>empty</em>.</li></ul><p>For each output of value <strong><em>v</em></strong>, the algorithm:</p><ol><li><p><strong>Calculates a <em>target range</em></strong> for the total value of inputs used to

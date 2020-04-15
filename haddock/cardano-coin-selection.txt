@@ -615,8 +615,7 @@ module Cardano.CoinSelection.RandomImprove
 --   of UTxO entries.
 --   
 --   However, if the remaining UTxO set is completely exhausted before all
---   outputs can be processed, the algorithm terminates and falls back to
---   the <b>Largest-First</b> algorithm. (See <a>largestFirst</a>.)
+--   outputs can be processed, the algorithm terminates with an error.
 --   
 --   <h3>Phase 2: Improvement</h3>
 --   
