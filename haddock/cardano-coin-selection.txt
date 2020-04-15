@@ -144,16 +144,13 @@ instance GHC.Generics.Generic Cardano.CoinSelection.Coin
 instance GHC.Classes.Eq Cardano.CoinSelection.Coin
 instance (GHC.Classes.Ord i, GHC.Classes.Ord o) => GHC.Base.Semigroup (Cardano.CoinSelection.CoinSelection i o)
 instance (GHC.Classes.Ord i, GHC.Classes.Ord o) => GHC.Base.Monoid (Cardano.CoinSelection.CoinSelection i o)
-instance (Formatting.Buildable.Buildable i, Formatting.Buildable.Buildable o) => Formatting.Buildable.Buildable (Cardano.CoinSelection.CoinSelection i o)
 instance Data.Foldable.Foldable Cardano.CoinSelection.CoinMap
-instance Formatting.Buildable.Buildable a => Formatting.Buildable.Buildable (Cardano.CoinSelection.CoinMapEntry a)
 instance GHC.Classes.Ord a => GHC.Base.Monoid (Cardano.CoinSelection.CoinMap a)
 instance GHC.Classes.Ord a => GHC.Base.Semigroup (Cardano.CoinSelection.CoinMap a)
 instance GHC.Base.Monoid Cardano.CoinSelection.Coin
 instance GHC.Base.Semigroup Cardano.CoinSelection.Coin
 instance Control.DeepSeq.NFData Cardano.CoinSelection.Coin
 instance GHC.Enum.Bounded Cardano.CoinSelection.Coin
-instance Formatting.Buildable.Buildable Cardano.CoinSelection.Coin
 
 
 -- | Provides the API of Coin Selection algorithm and Fee Calculation This
@@ -250,7 +247,7 @@ ErrCannotCoverFee :: Word64 -> ErrAdjustForFee
 --   will mean that that some outputs may pay a larger percentage of the
 --   fee (depending on how many change outputs the algorithm happened to
 --   choose).
-adjustForFee :: (Buildable i, Buildable o, Ord i, MonadRandom m) => FeeOptions i o -> CoinMap i -> CoinSelection i o -> ExceptT ErrAdjustForFee m (CoinSelection i o)
+adjustForFee :: (Ord i, Show i, Show o, MonadRandom m) => FeeOptions i o -> CoinMap i -> CoinSelection i o -> ExceptT ErrAdjustForFee m (CoinSelection i o)
 
 -- | Pays for the given fee by subtracting it from the given list of change
 --   outputs, so that each change output is reduced by a portion of the fee
