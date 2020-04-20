@@ -10,8 +10,13 @@
 @version 0.0.1
 
 
--- | Provides general functions and types relating to coin selection and
---   fee balancing.
+-- | Provides general functions and types relating to coin selection.
+--   
+--   The <a>CoinSelectionAlgorithm</a> type provides a <i>common
+--   interface</i> to coin selection algorithms.
+--   
+--   The <a>CoinSelection</a> type represents the <i>result</i> of running
+--   a coin selection algorithm.
 module Cardano.CoinSelection
 
 -- | A non-negative integer value that represents a number of Lovelace.
@@ -21,15 +26,51 @@ newtype Coin
 Coin :: Word64 -> Coin
 [unCoin] :: Coin -> Word64
 coinIsValid :: Coin -> Bool
+
+-- | A mapping from unique keys to associated <a>Coin</a> values.
+--   
+--   A <a>CoinMap</a> can be used to represent:
+--   
+--   <ul>
+--   <li>a UTxO set, where each key within the map refers to an unspent
+--   output from a previous transaction.</li>
+--   <li>a set of <a>inputs</a> to a <a>CoinSelection</a>, where each input
+--   is an entry selected from a UTxO set by a
+--   <a>CoinSelectionAlgorithm</a>.</li>
+--   <li>a set of <a>outputs</a> for a <a>CoinSelection</a>, where each key
+--   within the map refers to the address of a payment recipient.</li>
+--   </ul>
+--   
+--   A <a>CoinMap</a> can be constructed with the <a>coinMapFromList</a>
+--   function.
+--   
+--   The total value of a <a>CoinMap</a> is given by the
+--   <a>coinMapValue</a> function.
 newtype CoinMap a
 CoinMap :: Map a Coin -> CoinMap a
 [unCoinMap] :: CoinMap a -> Map a Coin
+
+-- | An entry for a <a>CoinMap</a>.
 data CoinMapEntry a
 CoinMapEntry :: a -> Coin -> CoinMapEntry a
+
+-- | The unique key associated with this entry.
 [entryKey] :: CoinMapEntry a -> a
+
+-- | The coin value associated with this entry.
 [entryValue] :: CoinMapEntry a -> Coin
+
+-- | Constructs a <a>CoinMap</a> from a list of entries.
+--   
+--   See <a>CoinMapEntry</a>.
 coinMapFromList :: Ord a => [CoinMapEntry a] -> CoinMap a
+
+-- | Converts a <a>CoinMap</a> to a list of entries.
+--   
+--   See <a>CoinMapEntry</a>.
 coinMapToList :: CoinMap a -> [CoinMapEntry a]
+
+-- | Calculates the total coin value associated with a <a>CoinMap</a>.
 coinMapValue :: CoinMap a -> Coin
 
 -- | Selects an entry at random from a <a>CoinMap</a>, returning both the
@@ -38,14 +79,14 @@ coinMapValue :: CoinMap a -> Coin
 --   If the given map is empty, this function returns <a>Nothing</a>.
 coinMapRandomEntry :: MonadRandom m => CoinMap a -> m (Maybe (CoinMapEntry a), CoinMap a)
 
--- | Represents the result of running a <i>coin selection algorithm</i>.
+-- | Represents the <i>result</i> of running a coin selection algorithm.
 --   
 --   See <a>CoinSelectionAlgorithm</a>.
 data CoinSelection i o
 CoinSelection :: CoinMap i -> CoinMap o -> [Coin] -> CoinSelection i o
 
--- | A <i>subset</i> of the original <tt>UTxO</tt> that was passed to the
---   coin selection algorithm, containing only the entries that were
+-- | A <i>subset</i> of the original UTxO set that was passed to the coin
+--   selection algorithm, containing only the entries that were
 --   <i>selected</i> by the coin selection algorithm.
 [inputs] :: CoinSelection i o -> CoinMap i
 
@@ -69,12 +110,27 @@ sumOutputs :: CoinSelection i o -> Coin
 --   <a>CoinSelection</a>.
 sumChange :: CoinSelection i o -> Coin
 
--- | Represents a <i>coin selection algorithm</i>.
+-- | Provides a common interface for coin selection algorithms.
 --   
---   The function <a>selectCoins</a>, when applied to the given <i>output
---   list</i> and <i>initial UTxO set</i>, generates a <a>CoinSelection</a>
+--   The function <a>selectCoins</a>, when applied to the given <i>initial
+--   UTxO set</i> and <i>output set</i>, generates a <a>CoinSelection</a>
 --   that is capable of paying for all of the outputs, and a <i>remaining
 --   UTxO set</i> from which all spent values have been removed.
+--   
+--   Each entry in the <i>initial UTxO set</i> refers to a unique unspent
+--   output from a previous transaction, together with its corresponding
+--   value. The algorithm will select from among the entries in this set to
+--   pay for entries in the output set, placing the selected entries in the
+--   <a>inputs</a> field of the resulting <a>CoinSelection</a>.
+--   
+--   Each entry in the <i>output set</i> refers to a unique payment
+--   recipient together with the value to pay to that recipient. The
+--   <a>outputs</a> field of the resulting <a>CoinSelection</a> will be
+--   equal to this set.
+--   
+--   The total value of the initial UTxO set must be <i>greater than or
+--   equal to</i> the total value of the output set, as given by the
+--   <a>coinMapValue</a> function.
 newtype CoinSelectionAlgorithm i o m e
 CoinSelectionAlgorithm :: (CoinSelectionOptions i o e -> CoinMap i -> CoinMap o -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap i)) -> CoinSelectionAlgorithm i o m e
 [selectCoins] :: CoinSelectionAlgorithm i o m e -> CoinSelectionOptions i o e -> CoinMap i -> CoinMap o -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap i)
