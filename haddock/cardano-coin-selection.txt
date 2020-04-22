@@ -4,28 +4,161 @@
 
 -- | Algorithms for coin selection and fee balancing.
 --   
---   A selection of algorithms for coin selection and fee balancing, used
---   in the Cardano ecosystem. Please see README.md for further details.
+--   Please see the README on GitHub at
+--   <a>https://github.com/input-output-hk/cardano-coin-selection</a>
 @package cardano-coin-selection
-@version 0.0.1
+@version 1.0.0
 
 
 -- | Provides general functions and types relating to coin selection.
 --   
---   The <a>CoinSelectionAlgorithm</a> type provides a <i>common
---   interface</i> to coin selection algorithms.
+--   The <a>CoinSelection</a> type represents a <b>coin selection</b>, the
+--   basis for a <i>transaction</i> in a UTxO-based blockchain.
 --   
---   The <a>CoinSelection</a> type represents the <i>result</i> of running
---   a coin selection algorithm.
+--   The <a>CoinSelectionAlgorithm</a> type provides a <b>common
+--   interface</b> to algorithms that generate coin selections.
 module Cardano.CoinSelection
 
--- | A non-negative integer value that represents a number of Lovelace.
+-- | A <b>coin selection</b> is the basis for a <i>transaction</i>.
 --   
---   One Ada is equal to 1,000,000 Lovelace.
-newtype Coin
-Coin :: Word64 -> Coin
-[unCoin] :: Coin -> Word64
-coinIsValid :: Coin -> Bool
+--   It consists of a selection of <a>inputs</a>, <a>outputs</a>, and
+--   <a>change</a>.
+--   
+--   The <a>inputs</a> and <a>outputs</a> fields are both maps of unique
+--   keys to associated <a>Coin</a> values, where:
+--   
+--   <ul>
+--   <li>Each key-value pair in the <a>inputs</a> map corresponds to an
+--   <b>unspent output</b> from a previous transaction (also known as a
+--   UTxO). The <i>key</i> is a unique reference to that output, and the
+--   <i>value</i> is the amount of unspent value associated with it.</li>
+--   <li>Each key-value pair in the <a>outputs</a> map corresponds to a
+--   <b>payment</b>. The <i>key</i> is a unique reference to a payment
+--   recipient, and the <i>value</i> is the amount of money to pay to that
+--   recipient.</li>
+--   </ul>
+--   
+--   The <a>change</a> field is a set of coins to be returned to the
+--   originator of the transaction.
+--   
+--   The <a>CoinSelectionAlgorithm</a> type provides a common interface for
+--   generating coin selections.
+data CoinSelection i o
+CoinSelection :: CoinMap i -> CoinMap o -> [Coin] -> CoinSelection i o
+
+-- | The set of inputs.
+[inputs] :: CoinSelection i o -> CoinMap i
+
+-- | The set of outputs.
+[outputs] :: CoinSelection i o -> CoinMap o
+
+-- | The set of change.
+[change] :: CoinSelection i o -> [Coin]
+
+-- | Calculate the total sum of all <a>inputs</a> for the given
+--   <a>CoinSelection</a>.
+sumInputs :: CoinSelection i o -> Coin
+
+-- | Calculate the total sum of all <a>outputs</a> for the given
+--   <a>CoinSelection</a>.
+sumOutputs :: CoinSelection i o -> Coin
+
+-- | Calculate the total sum of all <a>change</a> for the given
+--   <a>CoinSelection</a>.
+sumChange :: CoinSelection i o -> Coin
+
+-- | Provides a <b>common interface</b> for coin selection algorithms.
+--   
+--   The function <a>selectCoins</a>, when applied to the given
+--   <a>CoinSelectionParameters</a> object (with <i>available inputs</i>
+--   and <i>requested</i> <i>outputs</i>), will generate a
+--   <a>CoinSelectionResult</a> (with <i>remaining inputs</i> and a <i>coin
+--   selection</i>).
+newtype CoinSelectionAlgorithm i o m
+CoinSelectionAlgorithm :: (CoinSelectionParameters i o -> ExceptT CoinSelectionError m (CoinSelectionResult i o)) -> CoinSelectionAlgorithm i o m
+[selectCoins] :: CoinSelectionAlgorithm i o m -> CoinSelectionParameters i o -> ExceptT CoinSelectionError m (CoinSelectionResult i o)
+
+-- | The complete set of parameters required for a
+--   <a>CoinSelectionAlgorithm</a>.
+--   
+--   The <a>inputsAvailable</a> and <a>outputsRequested</a> fields are both
+--   maps of unique keys to associated <a>Coin</a> values, where:
+--   
+--   <ul>
+--   <li>Each key-value pair in the <a>inputsAvailable</a> map corresponds
+--   to an <b>unspent output</b> from a previous transaction that is
+--   <i>available</i> <i>for selection as an input</i> by the coin
+--   selection algorithm. The <i>key</i> is a unique reference to that
+--   output, and the <i>value</i> is the amount of unspent value associated
+--   with it.</li>
+--   <li>Each key-value pair in the <a>outputsRequested</a> map corresponds
+--   to a <b>payment</b> whose value is <i>to be paid for</i> by the coin
+--   selection algorithm. The <i>key</i> is a unique reference to a payment
+--   recipient, and the <i>value</i> is the amount of money to pay to that
+--   recipient.</li>
+--   </ul>
+--   
+--   A coin selection algorithm will select a <b>subset</b> of inputs from
+--   <a>inputsAvailable</a> in order to pay for <b>all</b> the outputs in
+--   <a>outputsRequested</a>, where:
+--   
+--   <ul>
+--   <li>Inputs <b>selected</b> by the algorithm are included in the
+--   <a>inputs</a> set of the generated <a>CoinSelection</a>.</li>
+--   <li>Inputs <b>not</b> selected by the algorithm are included in the
+--   <a>inputsRemaining</a> set of the <a>CoinSelectionResult</a>.</li>
+--   </ul>
+--   
+--   The number of inputs that can selected is limited by <a>limit</a>.
+--   
+--   The total value of <a>inputsAvailable</a> must be <i>greater than or
+--   equal to</i> the total value of <a>outputsRequested</a>, as given by
+--   the <a>coinMapValue</a> function.
+data CoinSelectionParameters i o
+CoinSelectionParameters :: CoinMap i -> CoinMap o -> CoinSelectionLimit -> CoinSelectionParameters i o
+
+-- | The set of inputs available for selection.
+[inputsAvailable] :: CoinSelectionParameters i o -> CoinMap i
+
+-- | The set of outputs requested for payment.
+[outputsRequested] :: CoinSelectionParameters i o -> CoinMap o
+
+-- | A limit on the number of inputs that can be selected.
+[limit] :: CoinSelectionParameters i o -> CoinSelectionLimit
+
+-- | Represents the <b>result</b> of running a coin selection algorithm.
+--   
+--   See <a>CoinSelectionAlgorithm</a>.
+data CoinSelectionResult i o
+CoinSelectionResult :: CoinSelection i o -> CoinMap i -> CoinSelectionResult i o
+
+-- | The generated coin selection.
+[coinSelection] :: CoinSelectionResult i o -> CoinSelection i o
+
+-- | The set of inputs that were <b>not</b> selected.
+[inputsRemaining] :: CoinSelectionResult i o -> CoinMap i
+
+-- | Defines an <b>inclusive upper bound</b> on the <i>number</i> of inputs
+--   that a <a>CoinSelectionAlgorithm</a> is allowed to select.
+newtype CoinSelectionLimit
+CoinSelectionLimit :: (Word8 -> Word8) -> CoinSelectionLimit
+
+-- | Calculate the maximum number of inputs allowed for a given number of
+--   outputs.
+[calculateLimit] :: CoinSelectionLimit -> Word8 -> Word8
+
+-- | Represents a non-negative integral amount of currency.
+--   
+--   Use <a>coinFromNatural</a> to create a coin from a natural number.
+--   
+--   Use <a>coinToNatural</a> to convert a coin into a natural number.
+data Coin
+
+-- | Creates a coin from a natural number.
+coinFromNatural :: Natural -> Coin
+
+-- | Converts the given coin into a natural number.
+coinToNatural :: Coin -> Natural
 
 -- | A mapping from unique keys to associated <a>Coin</a> values.
 --   
@@ -73,117 +206,73 @@ coinMapToList :: CoinMap a -> [CoinMapEntry a]
 -- | Calculates the total coin value associated with a <a>CoinMap</a>.
 coinMapValue :: CoinMap a -> Coin
 
--- | Selects an entry at random from a <a>CoinMap</a>, returning both the
---   selected entry and the map with the entry removed.
---   
---   If the given map is empty, this function returns <a>Nothing</a>.
-coinMapRandomEntry :: MonadRandom m => CoinMap a -> m (Maybe (CoinMapEntry a), CoinMap a)
-
--- | Represents the <i>result</i> of running a coin selection algorithm.
---   
---   See <a>CoinSelectionAlgorithm</a>.
-data CoinSelection i o
-CoinSelection :: CoinMap i -> CoinMap o -> [Coin] -> CoinSelection i o
-
--- | A <i>subset</i> of the original UTxO set that was passed to the coin
---   selection algorithm, containing only the entries that were
---   <i>selected</i> by the coin selection algorithm.
-[inputs] :: CoinSelection i o -> CoinMap i
-
--- | The original set of output payments passed to the coin selection
---   algorithm, whose total value is covered by the <a>inputs</a>.
-[outputs] :: CoinSelection i o -> CoinMap o
-
--- | A set of change values to be paid back to the originator of the
---   payment.
-[change] :: CoinSelection i o -> [Coin]
-
--- | Calculate the total sum of all <a>inputs</a> for the given
---   <a>CoinSelection</a>.
-sumInputs :: CoinSelection i o -> Coin
-
--- | Calculate the total sum of all <a>outputs</a> for the given
---   <a>CoinSelection</a>.
-sumOutputs :: CoinSelection i o -> Coin
-
--- | Calculate the total sum of all <a>change</a> for the given
---   <a>CoinSelection</a>.
-sumChange :: CoinSelection i o -> Coin
-
--- | Provides a common interface for coin selection algorithms.
---   
---   The function <a>selectCoins</a>, when applied to the given <i>initial
---   UTxO set</i> and <i>output set</i>, generates a <a>CoinSelection</a>
---   that is capable of paying for all of the outputs, and a <i>remaining
---   UTxO set</i> from which all spent values have been removed.
---   
---   Each entry in the <i>initial UTxO set</i> refers to a unique unspent
---   output from a previous transaction, together with its corresponding
---   value. The algorithm will select from among the entries in this set to
---   pay for entries in the output set, placing the selected entries in the
---   <a>inputs</a> field of the resulting <a>CoinSelection</a>.
---   
---   Each entry in the <i>output set</i> refers to a unique payment
---   recipient together with the value to pay to that recipient. The
---   <a>outputs</a> field of the resulting <a>CoinSelection</a> will be
---   equal to this set.
---   
---   The total value of the initial UTxO set must be <i>greater than or
---   equal to</i> the total value of the output set, as given by the
---   <a>coinMapValue</a> function.
-newtype CoinSelectionAlgorithm i o m e
-CoinSelectionAlgorithm :: (CoinSelectionOptions i o e -> CoinMap i -> CoinMap o -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap i)) -> CoinSelectionAlgorithm i o m e
-[selectCoins] :: CoinSelectionAlgorithm i o m e -> CoinSelectionOptions i o e -> CoinMap i -> CoinMap o -> ExceptT (CoinSelectionError e) m (CoinSelection i o, CoinMap i)
-
--- | Represents a set of options to be passed to a coin selection
---   algorithm.
-data CoinSelectionOptions i o e
-CoinSelectionOptions :: (Word8 -> Word8) -> (CoinSelection i o -> Either e ()) -> CoinSelectionOptions i o e
-
--- | Calculate the maximum number of inputs allowed for a given number of
---   outputs.
-[maximumInputCount] :: CoinSelectionOptions i o e -> Word8 -> Word8
-
--- | Validate the given coin selection, returning a backend-specific error.
-[validate] :: CoinSelectionOptions i o e -> CoinSelection i o -> Either e ()
-
 -- | Represents the set of possible failures that can occur when attempting
---   to produce a <a>CoinSelection</a>.
-data CoinSelectionError e
-
--- | The UTxO balance was insufficient to cover the total payment amount.
+--   to produce a <a>CoinSelection</a> with a
+--   <a>CoinSelectionAlgorithm</a>.
 --   
---   Records the <i>UTxO balance</i>, as well as the <i>total value</i> of
---   the payment we tried to make.
-ErrUtxoBalanceInsufficient :: Word64 -> Word64 -> CoinSelectionError e
+--   See <a>selectCoins</a>.
+data CoinSelectionError
+InputValueInsufficient :: InputValueInsufficientError -> CoinSelectionError
+InputCountInsufficient :: InputCountInsufficientError -> CoinSelectionError
+InputLimitExceeded :: InputLimitExceededError -> CoinSelectionError
+InputsExhausted :: InputsExhaustedError -> CoinSelectionError
 
--- | The UTxO was not fragmented enough to support the required number of
---   transaction outputs.
+-- | Indicates that the total value of <a>inputsAvailable</a> is less than
+--   the total value of <a>outputsRequested</a>, making it
+--   <i>impossible</i> to cover all payments, <i>regardless</i> of which
+--   algorithm is chosen.
+data InputValueInsufficientError
+InputValueInsufficientError :: Coin -> Coin -> InputValueInsufficientError
+
+-- | The total value of <a>inputsAvailable</a>.
+[inputValueAvailable] :: InputValueInsufficientError -> Coin
+
+-- | The total value of <a>outputsRequested</a>.
+[inputValueRequired] :: InputValueInsufficientError -> Coin
+
+-- | Indicates that the total count of entries in <a>inputsAvailable</a> is
+--   <i>fewer</i> <i>than</i> required by the algorithm. The number
+--   required depends on the particular algorithm implementation.
+data InputCountInsufficientError
+InputCountInsufficientError :: Natural -> Natural -> InputCountInsufficientError
+
+-- | The number of entries in <a>inputsAvailable</a>.
+[inputCountAvailable] :: InputCountInsufficientError -> Natural
+
+-- | The number of entries required.
+[inputCountRequired] :: InputCountInsufficientError -> Natural
+
+-- | Indicates that the coin selection algorithm is unable to cover the
+--   total value of <a>outputsRequested</a> without exceeding the maximum
+--   number of inputs defined by <a>limit</a>.
 --   
---   Records the <i>number</i> of UTxO entries, as well as the
---   <i>number</i> of the transaction outputs.
-ErrUtxoNotFragmentedEnough :: Word64 -> Word64 -> CoinSelectionError e
+--   See <a>calculateLimit</a>.
+newtype InputLimitExceededError
+InputLimitExceededError :: Word8 -> InputLimitExceededError
+[calculatedInputLimit] :: InputLimitExceededError -> Word8
 
--- | Due to the particular distribution of values within the UTxO set, all
---   available UTxO entries were depleted before all the requested
---   transaction outputs could be paid for.
-ErrUtxoFullyDepleted :: CoinSelectionError e
-
--- | The number of UTxO entries needed to cover the requested payment
---   exceeded the upper limit specified by <a>maximumInputCount</a>.
+-- | Indicates that all available entries in <a>inputsAvailable</a> were
+--   depleted <i>before</i> all the payments in <a>outputsRequested</a>
+--   could be paid for.
 --   
---   Records the value of <a>maximumInputCount</a>.
-ErrMaximumInputCountExceeded :: Word64 -> CoinSelectionError e
-
--- | The coin selection generated was reported to be invalid by the
---   backend.
---   
---   Records the <i>backend-specific error</i> that occurred while
---   attempting to validate the selection.
-ErrInvalidSelection :: e -> CoinSelectionError e
-instance GHC.Classes.Eq e => GHC.Classes.Eq (Cardano.CoinSelection.CoinSelectionError e)
-instance GHC.Show.Show e => GHC.Show.Show (Cardano.CoinSelection.CoinSelectionError e)
-instance GHC.Generics.Generic (Cardano.CoinSelection.CoinSelectionOptions i o e)
+--   This condition can occur <i>even if</i> the total value of
+--   <a>inputsAvailable</a> is greater than or equal to the total value of
+--   <a>outputsRequested</a>, due to differences in the way that algorithms
+--   select inputs.
+data InputsExhaustedError
+InputsExhaustedError :: InputsExhaustedError
+instance GHC.Show.Show Cardano.CoinSelection.CoinSelectionError
+instance GHC.Classes.Eq Cardano.CoinSelection.CoinSelectionError
+instance GHC.Show.Show Cardano.CoinSelection.InputLimitExceededError
+instance GHC.Classes.Eq Cardano.CoinSelection.InputLimitExceededError
+instance GHC.Show.Show Cardano.CoinSelection.InputsExhaustedError
+instance GHC.Classes.Eq Cardano.CoinSelection.InputsExhaustedError
+instance GHC.Show.Show Cardano.CoinSelection.InputCountInsufficientError
+instance GHC.Classes.Eq Cardano.CoinSelection.InputCountInsufficientError
+instance GHC.Show.Show Cardano.CoinSelection.InputValueInsufficientError
+instance GHC.Classes.Eq Cardano.CoinSelection.InputValueInsufficientError
+instance GHC.Generics.Generic (Cardano.CoinSelection.CoinSelectionParameters i o)
+instance GHC.Generics.Generic Cardano.CoinSelection.CoinSelectionLimit
 instance (GHC.Classes.Eq i, GHC.Classes.Eq o) => GHC.Classes.Eq (Cardano.CoinSelection.CoinSelection i o)
 instance (GHC.Show.Show i, GHC.Show.Show o) => GHC.Show.Show (Cardano.CoinSelection.CoinSelection i o)
 instance GHC.Generics.Generic (Cardano.CoinSelection.CoinSelection i o)
@@ -194,284 +283,163 @@ instance GHC.Classes.Eq a => GHC.Classes.Eq (Cardano.CoinSelection.CoinMapEntry 
 instance GHC.Show.Show a => GHC.Show.Show (Cardano.CoinSelection.CoinMap a)
 instance GHC.Generics.Generic (Cardano.CoinSelection.CoinMap a)
 instance GHC.Classes.Eq a => GHC.Classes.Eq (Cardano.CoinSelection.CoinMap a)
-instance GHC.Show.Show Cardano.CoinSelection.Coin
-instance GHC.Classes.Ord Cardano.CoinSelection.Coin
-instance GHC.Generics.Generic Cardano.CoinSelection.Coin
-instance GHC.Classes.Eq Cardano.CoinSelection.Coin
 instance (GHC.Classes.Ord i, GHC.Classes.Ord o) => GHC.Base.Semigroup (Cardano.CoinSelection.CoinSelection i o)
 instance (GHC.Classes.Ord i, GHC.Classes.Ord o) => GHC.Base.Monoid (Cardano.CoinSelection.CoinSelection i o)
 instance Data.Foldable.Foldable Cardano.CoinSelection.CoinMap
 instance GHC.Classes.Ord a => GHC.Base.Monoid (Cardano.CoinSelection.CoinMap a)
 instance GHC.Classes.Ord a => GHC.Base.Semigroup (Cardano.CoinSelection.CoinMap a)
-instance GHC.Base.Monoid Cardano.CoinSelection.Coin
-instance GHC.Base.Semigroup Cardano.CoinSelection.Coin
-instance Control.DeepSeq.NFData Cardano.CoinSelection.Coin
-instance GHC.Enum.Bounded Cardano.CoinSelection.Coin
 
 
--- | Provides the API of Coin Selection algorithm and Fee Calculation This
---   module contains the implementation of adjusting coin selection for a
---   fee. The sender pays for the fee and additional inputs are picked
---   randomly. For more information refer to:
---   <a>https://iohk.io/blog/self-organisation-in-coin-selection/</a>
-module Cardano.CoinSelection.Fee
+-- | This module contains an implementation of the <b>Random-Improve</b>
+--   coin selection algorithm.
+module Cardano.CoinSelection.RandomImprove
 
--- | Represents a fee to be paid on a transaction.
+-- | An implementation of the <b>Random-Improve</b> coin selection
+--   algorithm.
 --   
---   This type is isomorphic to <a>Coin</a>.
-newtype Fee
-Fee :: Word64 -> Fee
-[unFee] :: Fee -> Word64
-
--- | Calculates the current fee associated with a given
---   <a>CoinSelection</a>.
-calculateFee :: CoinSelection i o -> Fee
-
--- | Distribute the given fee over the given list of coins, so that each
---   coin is allocated a <b>fraction</b> of the fee in proportion to its
---   relative size.
+--   <h1>Overview</h1>
 --   
---   <h2>Pre-condition</h2>
+--   The <b>Random-Improve</b> coin selection algorithm works in <b>two
+--   phases</b>, by <i>first</i> selecting UTxO entries <i>at random</i> to
+--   pay for each of the given outputs, and <i>then</i> attempting to
+--   <i>improve</i> upon each of the selections.
 --   
---   Every coin in the given list must be <b>non-zero</b> in value.
+--   <h3>Phase 1: Random Selection</h3>
 --   
---   <h2>Examples</h2>
+--   <b>In this phase, the algorithm randomly selects a minimal set of
+--   UTxO</b> <b>entries to pay for each of the given outputs.</b>
 --   
---   <pre>
---   &gt;&gt;&gt; distributeFee (Fee 2) [(Coin 1), (Coin 1)]
---   [(Fee 1, Coin 1), (Fee 1, Coin 1)]
---   </pre>
+--   During this phase, the algorithm:
 --   
---   <pre>
---   &gt;&gt;&gt; distributeFee (Fee 4) [(Coin 1), (Coin 1)]
---   [(Fee 2, Coin 1), (Fee 2, Coin 1)]
---   </pre>
+--   <ul>
+--   <li>processes outputs in <i>descending order of coin value</i>.</li>
+--   <li>maintains a <i>remaining UTxO set</i>, initially equal to the
+--   given <i>UTxO set</i> parameter.</li>
+--   </ul>
 --   
---   <pre>
---   &gt;&gt;&gt; distributeFee (Fee 7) [(Coin 1), (Coin 2), (Coin 4)]
---   [(Fee 1, Coin 1), (Fee 2, Coin 2), (Fee 4, Coin 4)]
---   </pre>
+--   For each output of value <b><i>v</i></b>, the algorithm
+--   <i>randomly</i> selects entries from the <i>remaining UTxO set</i>,
+--   until the total value of selected entries is greater than or equal to
+--   <b><i>v</i></b>. The selected entries are then associated with that
+--   output, and removed from the <i>remaining UTxO set</i>.
 --   
---   <pre>
---   &gt;&gt;&gt; distributeFee (Fee 14) [(Coin 1), (Coin 2), (Coin 4)]
---   [(Fee 2, Coin 1), (Fee 4, Coin 2), (Fee 8, Coin 4)]
---   </pre>
-distributeFee :: Fee -> NonEmpty Coin -> NonEmpty (Fee, Coin)
-
--- | Provides a function capable of estimating the fee for a given coin
---   selection.
+--   This phase ends when every output has been associated with a selection
+--   of UTxO entries.
 --   
---   The fee estimate can depend on the numbers of inputs, outputs, and
---   change outputs within the coin selection, as well as their magnitudes.
-newtype FeeEstimator i o
-FeeEstimator :: (CoinSelection i o -> Fee) -> FeeEstimator i o
-[estimateFee] :: FeeEstimator i o -> CoinSelection i o -> Fee
-
--- | Provides options for fee balancing.
-data FeeOptions i o
-FeeOptions :: FeeEstimator i o -> DustThreshold -> FeeOptions i o
-[feeEstimator] :: FeeOptions i o -> FeeEstimator i o
-[dustThreshold] :: FeeOptions i o -> DustThreshold
-newtype ErrAdjustForFee
-
--- | UTxO exhausted during fee covering We record what amount missed to
---   cover the fee
-ErrCannotCoverFee :: Word64 -> ErrAdjustForFee
-
--- | Given the coin selection result from a policy run, adjust the outputs
---   for fees, potentially returning additional inputs that we need to
---   cover all fees.
+--   However, if the remaining UTxO set is completely exhausted before all
+--   outputs can be processed, the algorithm terminates with an error.
 --   
---   We lose the relationship between the transaction outputs and their
---   corresponding inputs/change outputs here. This is a decision we may
---   wish to revisit later. For now however note that since
+--   <h3>Phase 2: Improvement</h3>
 --   
---   (a) coin selection tries to establish a particular ratio between
---   payment outputs and change outputs (currently it aims for an average
---   of 1:1)
+--   <b>In this phase, the algorithm attempts to improve upon each of the
+--   UTxO</b> <b>selections made in the previous phase, by conservatively
+--   expanding the</b> <b>selection made for each output.</b>
 --   
---   (b) coin selection currently only generates a single change output per
---   payment output, distributing the fee proportionally across all change
---   outputs is roughly equivalent to distributing it proportionally over
---   the payment outputs (roughly, not exactly, because the 1:1 proportion
---   is best effort only, and may in some cases be wildly different).
+--   During this phase, the algorithm:
 --   
---   Note that for (a) we don't need the ratio to be 1:1, the above
---   reasoning will remain true for any proportion 1:n. For (b) however, if
---   coin selection starts creating multiple outputs, and this number may
---   vary, then losing the connection between outputs and change outputs
---   will mean that that some outputs may pay a larger percentage of the
---   fee (depending on how many change outputs the algorithm happened to
---   choose).
-adjustForFee :: (Ord i, Show i, Show o, MonadRandom m) => FeeOptions i o -> CoinMap i -> CoinSelection i o -> ExceptT ErrAdjustForFee m (CoinSelection i o)
-
--- | Pays for the given fee by subtracting it from the given list of change
---   outputs, so that each change output is reduced by a portion of the fee
---   that's in proportion to its relative size.
+--   <ul>
+--   <li>processes outputs in <i>ascending order of coin value</i>.</li>
+--   <li>continues to maintain the <i>remaining UTxO set</i> produced by
+--   the previous phase.</li>
+--   <li>maintains an <i>accumulated coin selection</i>, which is initially
+--   <i>empty</i>.</li>
+--   </ul>
 --   
---   <h2>Basic Examples</h2>
+--   For each output of value <b><i>v</i></b>, the algorithm:
 --   
---   <pre>
---   &gt;&gt;&gt; reduceChangeOutputs (DustThreshold 0) (Fee 4) (Coin &lt;$&gt; [2, 2, 2, 2])
---   [Coin 1, Coin 1, Coin 1, Coin 1]
---   </pre>
+--   <ol>
+--   <li><b>Calculates a <i>target range</i></b> for the total value of
+--   inputs used to pay for that output, defined by the
+--   triplet:(<i>minimum</i>, <i>ideal</i>, <i>maximum</i>) = (<i>v</i>,
+--   <i>2v</i>, <i>3v</i>)</li>
+--   <li><b>Attempts to <i>improve</i> upon the <i>existing UTxO
+--   selection</i></b> for that output, by repeatedly selecting additional
+--   entries at random from the <i>remaining UTxO set</i>, stopping when
+--   the selection can be improved upon no further.A selection with value
+--   <i>v1</i> is considered to be an <i>improvement</i> over a selection
+--   with value <i>v0</i> if <b>all</b> of the following conditions are
+--   satisfied:<ul><li><b>Condition 1</b>: we have moved closer to the
+--   <i>ideal</i> value:abs (<i>ideal</i> − <i>v1</i>) &lt; abs
+--   (<i>ideal</i> − <i>v0</i>)</li><li><b>Condition 2</b>: we have not
+--   exceeded the <i>maximum</i> value:<i>v1</i> ≤
+--   <i>maximum</i></li><li><b>Condition 3</b>: when counting cumulatively
+--   across all outputs considered so far, we have not selected more than
+--   the <i>maximum</i> number of UTxO entries specified by
+--   <a>limit</a>.</li></ul></li>
+--   <li><b>Creates a <i>change value</i></b> for the output, equal to the
+--   total value of the <i>final UTxO selection</i> for that output minus
+--   the value <i>v</i> of that output.</li>
+--   <li><b>Updates the <i>accumulated coin selection</i></b>:<ul><li>Adds
+--   the <i>output</i> to <a>outputs</a>.</li><li>Adds the <i>improved UTxO
+--   selection</i> to <a>inputs</a>.</li><li>Adds the <i>change value</i>
+--   to <a>change</a>.</li></ul></li>
+--   </ol>
 --   
---   <pre>
---   &gt;&gt;&gt; reduceChangeOutputs (DustThreshold 0) (Fee 15) (Coin &lt;$&gt; [2, 4, 8, 16])
---   [Coin 1, Coin 2, Coin 4, Coin 8]
---   </pre>
+--   This phase ends when every output has been processed, <b>or</b> when
+--   the <i>remaining UTxO set</i> has been exhausted, whichever occurs
+--   sooner.
 --   
---   <h2>Handling Dust</h2>
+--   <h1>Termination</h1>
 --   
---   Any dust outputs in the resulting list are coalesced according to the
---   given dust threshold: (See <a>coalesceDust</a>.)
+--   When both phases are complete, the algorithm terminates.
 --   
---   <pre>
---   &gt;&gt;&gt; reduceChangeOutputs (DustThreshold 1) (Fee 4) (Coin &lt;$&gt; [2, 2, 2, 2])
---   [Coin 4]
---   </pre>
+--   The <i>accumulated coin selection</i> and <i>remaining UTxO set</i>
+--   are returned to the caller.
 --   
---   <h2>Handling Insufficient Change</h2>
+--   <h3>Failure Modes</h3>
 --   
---   If there's not enough change to pay for the fee, or if there's only
---   just enough to pay for it exactly, this function returns the <i>empty
---   list</i>:
+--   The algorithm terminates with an <b>error</b> if:
 --   
---   <pre>
---   &gt;&gt;&gt; reduceChangeOutputs (DustThreshold 0) (Fee 15) (Coin &lt;$&gt; [10])
---   []
---   </pre>
+--   <ol>
+--   <li>The <i>total value</i> of the initial UTxO set (the amount of
+--   money <i>available</i>) is <i>less than</i> the total value of the
+--   output list (the amount of money <i>required</i>).See:
+--   <b><a>InputValueInsufficientError</a></b>.</li>
+--   <li>The <i>number</i> of entries in the initial UTxO set is <i>smaller
+--   than</i> the number of requested outputs.Due to the nature of the
+--   algorithm, <i>at least one</i> UTxO entry is required <i>for each</i>
+--   output.See: <b><a>InputCountInsufficientError</a></b>.</li>
+--   <li>Due to the particular <i>distribution</i> of values within the
+--   initial UTxO set, the algorithm depletes all entries from the UTxO set
+--   <i>before</i> it is able to pay for all requested outputs.See:
+--   <b><a>InputsExhaustedError</a></b>.</li>
+--   <li>The <i>number</i> of UTxO entries needed to pay for the requested
+--   outputs would <i>exceed</i> the upper limit specified by
+--   <a>limit</a>.See: <b><a>InputLimitExceededError</a></b>.</li>
+--   </ol>
 --   
---   <pre>
---   &gt;&gt;&gt; reduceChangeOutputs (DustThreshold 0) (Fee 15) (Coin &lt;$&gt; [1, 2, 4, 8])
---   []
---   </pre>
-reduceChangeOutputs :: DustThreshold -> Fee -> [Coin] -> [Coin]
-
--- | Defines the maximum size of a dust coin.
+--   <h1>Motivating Principles</h1>
 --   
---   Change values that are less than or equal to this threshold will not
---   be included in transactions.
+--   There are several motivating principles behind the design of the
+--   algorithm.
 --   
---   This type is isomorphic to <a>Coin</a>.
-newtype DustThreshold
-DustThreshold :: Word64 -> DustThreshold
-[unDustThreshold] :: DustThreshold -> Word64
-
--- | From the given list of coins, remove dust coins with a value less than
---   or equal to the given threshold value, redistributing their total
---   value over the coins that remain.
+--   <h3>Principle 1: Dust Management</h3>
 --   
---   This function satisfies the following properties:
+--   The probability that random selection will choose dust entries from a
+--   UTxO set increases with the proportion of dust in the set.
 --   
---   <pre>
---   &gt;&gt;&gt; sum coins = sum (coalesceDust threshold coins)
+--   Therefore, for a UTxO set with a large amount of dust, there's a high
+--   probability that a random subset will include a large amount of dust.
 --   
---   &gt;&gt;&gt; all (/= Coin 0) (coalesceDust threshold coins)
---   </pre>
-coalesceDust :: DustThreshold -> NonEmpty Coin -> [Coin]
-
--- | Splits up the given coin of value <b><tt>v</tt></b>, distributing its
---   value over the given coin list of length <b><tt>n</tt></b>, so that
---   each coin value is increased by an integral amount within unity of
---   <b><tt>v/n</tt></b>, producing a new list of coin values where the
---   overall total is preserved.
+--   <h3>Principle 2: Change Management</h3>
 --   
---   <h2>Basic Examples</h2>
+--   Ideally, coin selection algorithms should, over time, create a UTxO
+--   set that has <i>useful</i> outputs: outputs that will allow us to
+--   process future payments with a minimum number of inputs.
 --   
---   When it's possible to divide a coin evenly, each coin value is
---   increased by the same integer amount:
+--   If for each payment request of value <b><i>v</i></b> we create a
+--   change output of <i>roughly</i> the same value <b><i>v</i></b>, then
+--   we will end up with a distribution of change values that matches the
+--   typical value distribution of payment requests.
 --   
---   <pre>
---   &gt;&gt;&gt; splitCoin (Coin 40) (Coin &lt;$&gt; [1, 1, 1, 1])
---   [Coin 11, Coin 11, Coin 11, Coin 11]
---   </pre>
+--   <h3>Principle 3: Performance Management</h3>
 --   
---   <pre>
---   &gt;&gt;&gt; splitCoin (Coin 40) (Coin &lt;$&gt; [1, 2, 3, 4])
---   [Coin 11, Coin 12, Coin 13, Coin 14]
---   </pre>
---   
---   <h2>Handling Non-Uniform Increases</h2>
---   
---   When it's not possible to divide a coin evenly, each integral coin
---   value in the resulting list is always within unity of the ideal
---   unrounded result:
---   
---   <pre>
---   &gt;&gt;&gt; splitCoin (Coin 2) (Coin &lt;$&gt; [1, 1, 1, 1])
---   [Coin 1, Coin 1, Coin 2, Coin 2]
---   </pre>
---   
---   <pre>
---   &gt;&gt;&gt; splitCoin (Coin 10) (Coin &lt;$&gt; [1, 1, 1, 1])
---   [Coin 3, Coin 3, Coin 4, Coin 4]
---   </pre>
---   
---   <h2>Handling Overflow</h2>
---   
---   While processing the given list, if increasing the value of any given
---   coin <b><tt>c</tt></b> would cause its value to exceed
---   <a>maxBound</a>, this function will leave coin <b><tt>c</tt></b>
---   <i>unchanged</i> in the resulting list, distributing the excess value
---   to coins that occur <i>later</i> in the list:
---   
---   <pre>
---   &gt;&gt;&gt; splitCoin (Coin 10) (Coin &lt;$&gt; [unCoin maxBound, 1])
---   [Coin 45000000000000000, Coin 11]
---   </pre>
---   
---   <pre>
---   &gt;&gt;&gt; splitCoin (Coin 10) (Coin &lt;$&gt; [unCoin maxBound - 1, 1])
---   [Coin 44999999999999999, Coin 11]
---   </pre>
---   
---   <pre>
---   &gt;&gt;&gt; splitCoin (Coin 10) (Coin &lt;$&gt; [unCoin maxBound - 1, 1, 1])
---   [Coin 44999999999999999, Coin 6, 6]
---   </pre>
---   
---   <h2>Handling Leftover Remaining Value</h2>
---   
---   If there is any remaining value left over after processing the list, a
---   <i>new</i> coin is appended to the <i>end</i> of the list to hold the
---   excess value:
---   
---   <pre>
---   &gt;&gt;&gt; splitCoin (Coin 10) []
---   [Coin 10]
---   </pre>
---   
---   <pre>
---   &gt;&gt;&gt; splitCoin (Coin 10) (Coin &lt;$&gt; [unCoin maxBound])
---   [Coin 45000000000000000, Coin 10]
---   </pre>
---   
---   <pre>
---   &gt;&gt;&gt; splitCoin (Coin 10) (Coin &lt;$&gt; [unCoin maxBound - 1])
---   [Coin 44999999999999999, Coin 10]
---   </pre>
---   
---   <h2>Properties</h2>
---   
---   The total value is always preserved:
---   
---   <pre>
---   &gt;&gt;&gt; sum (splitCoin x ys) == x + sum ys
---   </pre>
-splitCoin :: Coin -> [Coin] -> [Coin]
-instance GHC.Classes.Eq Cardano.CoinSelection.Fee.ErrAdjustForFee
-instance GHC.Show.Show Cardano.CoinSelection.Fee.ErrAdjustForFee
-instance GHC.Generics.Generic (Cardano.CoinSelection.Fee.FeeOptions i o)
-instance GHC.Generics.Generic (Cardano.CoinSelection.Fee.FeeEstimator i o)
-instance GHC.Show.Show Cardano.CoinSelection.Fee.DustThreshold
-instance GHC.Classes.Ord Cardano.CoinSelection.Fee.DustThreshold
-instance GHC.Generics.Generic Cardano.CoinSelection.Fee.DustThreshold
-instance GHC.Classes.Eq Cardano.CoinSelection.Fee.DustThreshold
-instance GHC.Show.Show Cardano.CoinSelection.Fee.Fee
-instance GHC.Classes.Ord Cardano.CoinSelection.Fee.Fee
-instance GHC.Generics.Generic Cardano.CoinSelection.Fee.Fee
-instance GHC.Classes.Eq Cardano.CoinSelection.Fee.Fee
+--   Searching the UTxO set for additional entries to improve our change
+--   outputs is <i>only</i> useful if the UTxO set contains entries that
+--   are sufficiently small enough. But it is precisely when the UTxO set
+--   contains many small entries that it is less likely for a
+--   randomly-chosen UTxO entry to push the total above the upper bound.
+randomImprove :: (Ord i, Ord o, MonadRandom m) => CoinSelectionAlgorithm i o m
 
 
 -- | This module contains an implementation of the <b>Largest-First</b>
@@ -567,21 +535,95 @@ module Cardano.CoinSelection.LargestFirst
 --   <li>The <i>total value</i> of the initial UTxO set (the amount of
 --   money <i>available</i>) is <i>less than</i> the total value of the
 --   output list (the amount of money <i>required</i>).See:
---   <b><a>ErrUtxoBalanceInsufficient</a></b>.</li>
+--   <b><a>InputValueInsufficientError</a></b>.</li>
 --   <li>The <i>number</i> of entries in the initial UTxO set is <i>smaller
 --   than</i> the number of requested outputs.Due to the nature of the
 --   algorithm, <i>at least one</i> UTxO entry is required <i>for each</i>
---   output.See: <b><a>ErrUtxoNotFragmentedEnough</a></b>.</li>
+--   output.See: <b><a>InputCountInsufficientError</a></b>.</li>
 --   <li>Due to the particular <i>distribution</i> of values within the
 --   initial UTxO set, the algorithm depletes all entries from the UTxO set
 --   <i>before</i> it is able to pay for all requested outputs.See:
---   <b><a>ErrUtxoFullyDepleted</a></b>.</li>
+--   <b><a>InputsExhaustedError</a></b>.</li>
 --   <li>The <i>number</i> of UTxO entries needed to pay for the requested
 --   outputs would <i>exceed</i> the upper limit specified by
---   <a>maximumInputCount</a>.See:
---   <b><a>ErrMaximumInputCountExceeded</a></b>.</li>
+--   <a>limit</a>.See: <b><a>InputLimitExceededError</a></b>.</li>
 --   </ol>
-largestFirst :: (Ord i, Ord o, Monad m) => CoinSelectionAlgorithm i o m e
+largestFirst :: (Ord i, Ord o, Monad m) => CoinSelectionAlgorithm i o m
+
+
+-- | Provides functionality for <b>adjusting</b> coin selections in order
+--   to pay for transaction <b>fees</b>.
+module Cardano.CoinSelection.Fee
+
+-- | Represents a non-negative fee to be paid on a transaction.
+newtype Fee
+Fee :: Coin -> Fee
+[unFee] :: Fee -> Coin
+
+-- | Provides a function capable of estimating the fee for a given coin
+--   selection.
+--   
+--   The fee estimate can depend on the numbers of inputs, outputs, and
+--   change outputs within the coin selection, as well as their magnitudes.
+newtype FeeEstimator i o
+FeeEstimator :: (CoinSelection i o -> Fee) -> FeeEstimator i o
+[estimateFee] :: FeeEstimator i o -> CoinSelection i o -> Fee
+
+-- | Defines the maximum size of a dust coin.
+--   
+--   Change values that are less than or equal to this threshold will not
+--   be included in coin selections produced by the <a>adjustForFee</a>
+--   function.
+newtype DustThreshold
+DustThreshold :: Coin -> DustThreshold
+[unDustThreshold] :: DustThreshold -> Coin
+
+-- | Given the coin selection result from a policy run, adjust the outputs
+--   for fees, potentially returning additional inputs that we need to
+--   cover all fees.
+--   
+--   We lose the relationship between the transaction outputs and their
+--   corresponding inputs/change outputs here. This is a decision we may
+--   wish to revisit later. For now however note that since
+--   
+--   (a) coin selection tries to establish a particular ratio between
+--   payment outputs and change outputs (currently it aims for an average
+--   of 1:1)
+--   
+--   (b) coin selection currently only generates a single change output per
+--   payment output, distributing the fee proportionally across all change
+--   outputs is roughly equivalent to distributing it proportionally over
+--   the payment outputs (roughly, not exactly, because the 1:1 proportion
+--   is best effort only, and may in some cases be wildly different).
+--   
+--   Note that for (a) we don't need the ratio to be 1:1, the above
+--   reasoning will remain true for any proportion 1:n. For (b) however, if
+--   coin selection starts creating multiple outputs, and this number may
+--   vary, then losing the connection between outputs and change outputs
+--   will mean that that some outputs may pay a larger percentage of the
+--   fee (depending on how many change outputs the algorithm happened to
+--   choose).
+adjustForFee :: (Ord i, Show i, Show o, MonadRandom m) => FeeOptions i o -> CoinMap i -> CoinSelection i o -> ExceptT FeeAdjustmentError m (CoinSelection i o)
+
+-- | Provides options for fee adjustment.
+data FeeOptions i o
+FeeOptions :: FeeEstimator i o -> DustThreshold -> FeeOptions i o
+[feeEstimator] :: FeeOptions i o -> FeeEstimator i o
+[dustThreshold] :: FeeOptions i o -> DustThreshold
+instance GHC.Classes.Eq Cardano.CoinSelection.Fee.FeeAdjustmentError
+instance GHC.Show.Show Cardano.CoinSelection.Fee.FeeAdjustmentError
+instance GHC.Generics.Generic (Cardano.CoinSelection.Fee.FeeOptions i o)
+instance GHC.Generics.Generic (Cardano.CoinSelection.Fee.FeeEstimator i o)
+instance GHC.Show.Show Cardano.CoinSelection.Fee.DustThreshold
+instance GHC.Classes.Ord Cardano.CoinSelection.Fee.DustThreshold
+instance GHC.Generics.Generic Cardano.CoinSelection.Fee.DustThreshold
+instance GHC.Classes.Eq Cardano.CoinSelection.Fee.DustThreshold
+instance GHC.Show.Show Cardano.CoinSelection.Fee.Fee
+instance GHC.Classes.Ord Cardano.CoinSelection.Fee.Fee
+instance GHC.Generics.Generic Cardano.CoinSelection.Fee.Fee
+instance GHC.Classes.Eq Cardano.CoinSelection.Fee.Fee
+instance GHC.Base.Semigroup Cardano.CoinSelection.Fee.Fee
+instance GHC.Base.Monoid Cardano.CoinSelection.Fee.Fee
 
 
 -- | This module contains an algorithm to select coins for migration from
@@ -624,161 +666,4 @@ module Cardano.CoinSelection.Migration
 --   
 --   The fee options are used to balance the coin selections and fix a
 --   threshold for dust that is removed from the selections.
-depleteUTxO :: forall i o. (Ord i, Ord o) => FeeOptions i o -> Word8 -> CoinMap i -> [CoinSelection i o]
-
--- | Try to find a fix "ideal" number of input transactions that would
---   generate rather balanced transactions.
-idealBatchSize :: CoinSelectionOptions i o e -> Word8
-
-
--- | This module contains an implementation of the <b>Random-Improve</b>
---   coin selection algorithm.
-module Cardano.CoinSelection.RandomImprove
-
--- | An implementation of the <b>Random-Improve</b> coin selection
---   algorithm.
---   
---   <h1>Overview</h1>
---   
---   The <b>Random-Improve</b> coin selection algorithm works in <b>two
---   phases</b>, by <i>first</i> selecting UTxO entries <i>at random</i> to
---   pay for each of the given outputs, and <i>then</i> attempting to
---   <i>improve</i> upon each of the selections.
---   
---   <h3>Phase 1: Random Selection</h3>
---   
---   <b>In this phase, the algorithm randomly selects a minimal set of
---   UTxO</b> <b>entries to pay for each of the given outputs.</b>
---   
---   During this phase, the algorithm:
---   
---   <ul>
---   <li>processes outputs in <i>descending order of coin value</i>.</li>
---   <li>maintains a <i>remaining UTxO set</i>, initially equal to the
---   given <i>UTxO set</i> parameter.</li>
---   </ul>
---   
---   For each output of value <b><i>v</i></b>, the algorithm
---   <i>randomly</i> selects entries from the <i>remaining UTxO set</i>,
---   until the total value of selected entries is greater than or equal to
---   <b><i>v</i></b>. The selected entries are then associated with that
---   output, and removed from the <i>remaining UTxO set</i>.
---   
---   This phase ends when every output has been associated with a selection
---   of UTxO entries.
---   
---   However, if the remaining UTxO set is completely exhausted before all
---   outputs can be processed, the algorithm terminates with an error.
---   
---   <h3>Phase 2: Improvement</h3>
---   
---   <b>In this phase, the algorithm attempts to improve upon each of the
---   UTxO</b> <b>selections made in the previous phase, by conservatively
---   expanding the</b> <b>selection made for each output.</b>
---   
---   During this phase, the algorithm:
---   
---   <ul>
---   <li>processes outputs in <i>ascending order of coin value</i>.</li>
---   <li>continues to maintain the <i>remaining UTxO set</i> produced by
---   the previous phase.</li>
---   <li>maintains an <i>accumulated coin selection</i>, which is initially
---   <i>empty</i>.</li>
---   </ul>
---   
---   For each output of value <b><i>v</i></b>, the algorithm:
---   
---   <ol>
---   <li><b>Calculates a <i>target range</i></b> for the total value of
---   inputs used to pay for that output, defined by the
---   triplet:(<i>minimum</i>, <i>ideal</i>, <i>maximum</i>) = (<i>v</i>,
---   <i>2v</i>, <i>3v</i>)</li>
---   <li><b>Attempts to <i>improve</i> upon the <i>existing UTxO
---   selection</i></b> for that output, by repeatedly selecting additional
---   entries at random from the <i>remaining UTxO set</i>, stopping when
---   the selection can be improved upon no further.A selection with value
---   <i>v1</i> is considered to be an <i>improvement</i> over a selection
---   with value <i>v0</i> if <b>all</b> of the following conditions are
---   satisfied:<ul><li><b>Condition 1</b>: we have moved closer to the
---   <i>ideal</i> value:abs (<i>ideal</i> − <i>v1</i>) &lt; abs
---   (<i>ideal</i> − <i>v0</i>)</li><li><b>Condition 2</b>: we have not
---   exceeded the <i>maximum</i> value:<i>v1</i> ≤
---   <i>maximum</i></li><li><b>Condition 3</b>: when counting cumulatively
---   across all outputs considered so far, we have not selected more than
---   the <i>maximum</i> number of UTxO entries specified by
---   <a>maximumInputCount</a>.</li></ul></li>
---   <li><b>Creates a <i>change value</i></b> for the output, equal to the
---   total value of the <i>final UTxO selection</i> for that output minus
---   the value <i>v</i> of that output.</li>
---   <li><b>Updates the <i>accumulated coin selection</i></b>:<ul><li>Adds
---   the <i>output</i> to <a>outputs</a>.</li><li>Adds the <i>improved UTxO
---   selection</i> to <a>inputs</a>.</li><li>Adds the <i>change value</i>
---   to <a>change</a>.</li></ul></li>
---   </ol>
---   
---   This phase ends when every output has been processed, <b>or</b> when
---   the <i>remaining UTxO set</i> has been exhausted, whichever occurs
---   sooner.
---   
---   <h1>Termination</h1>
---   
---   When both phases are complete, the algorithm terminates.
---   
---   The <i>accumulated coin selection</i> and <i>remaining UTxO set</i>
---   are returned to the caller.
---   
---   <h3>Failure Modes</h3>
---   
---   The algorithm terminates with an <b>error</b> if:
---   
---   <ol>
---   <li>The <i>total value</i> of the initial UTxO set (the amount of
---   money <i>available</i>) is <i>less than</i> the total value of the
---   output list (the amount of money <i>required</i>).See:
---   <b><a>ErrUtxoBalanceInsufficient</a></b>.</li>
---   <li>The <i>number</i> of entries in the initial UTxO set is <i>smaller
---   than</i> the number of requested outputs.Due to the nature of the
---   algorithm, <i>at least one</i> UTxO entry is required <i>for each</i>
---   output.See: <b><a>ErrUtxoNotFragmentedEnough</a></b>.</li>
---   <li>Due to the particular <i>distribution</i> of values within the
---   initial UTxO set, the algorithm depletes all entries from the UTxO set
---   <i>before</i> it is able to pay for all requested outputs.See:
---   <b><a>ErrUtxoFullyDepleted</a></b>.</li>
---   <li>The <i>number</i> of UTxO entries needed to pay for the requested
---   outputs would <i>exceed</i> the upper limit specified by
---   <a>maximumInputCount</a>.See:
---   <b><a>ErrMaximumInputCountExceeded</a></b>.</li>
---   </ol>
---   
---   <h1>Motivating Principles</h1>
---   
---   There are several motivating principles behind the design of the
---   algorithm.
---   
---   <h3>Principle 1: Dust Management</h3>
---   
---   The probability that random selection will choose dust entries from a
---   UTxO set increases with the proportion of dust in the set.
---   
---   Therefore, for a UTxO set with a large amount of dust, there's a high
---   probability that a random subset will include a large amount of dust.
---   
---   <h3>Principle 2: Change Management</h3>
---   
---   Ideally, coin selection algorithms should, over time, create a UTxO
---   set that has <i>useful</i> outputs: outputs that will allow us to
---   process future payments with a minimum number of inputs.
---   
---   If for each payment request of value <b><i>v</i></b> we create a
---   change output of <i>roughly</i> the same value <b><i>v</i></b>, then
---   we will end up with a distribution of change values that matches the
---   typical value distribution of payment requests.
---   
---   <h3>Principle 3: Performance Management</h3>
---   
---   Searching the UTxO set for additional entries to improve our change
---   outputs is <i>only</i> useful if the UTxO set contains entries that
---   are sufficiently small enough. But it is precisely when the UTxO set
---   contains many small entries that it is less likely for a
---   randomly-chosen UTxO entry to push the total above the upper bound.
-randomImprove :: (Ord i, Ord o, MonadRandom m) => CoinSelectionAlgorithm i o m e
+selectCoins :: forall i o. (Ord i, Ord o) => FeeOptions i o -> Word8 -> CoinMap i -> [CoinSelection i o]
