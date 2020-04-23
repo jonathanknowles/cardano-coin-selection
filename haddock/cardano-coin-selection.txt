@@ -141,11 +141,11 @@ CoinSelectionResult :: CoinSelection i o -> CoinMap i -> CoinSelectionResult i o
 -- | Defines an <b>inclusive upper bound</b> on the <i>number</i> of inputs
 --   that a <a>CoinSelectionAlgorithm</a> is allowed to select.
 newtype CoinSelectionLimit
-CoinSelectionLimit :: (Word8 -> Word8) -> CoinSelectionLimit
+CoinSelectionLimit :: (Word16 -> Word16) -> CoinSelectionLimit
 
 -- | Calculate the maximum number of inputs allowed for a given number of
 --   outputs.
-[calculateLimit] :: CoinSelectionLimit -> Word8 -> Word8
+[calculateLimit] :: CoinSelectionLimit -> Word16 -> Word16
 
 -- | Represents a non-negative integral amount of currency.
 --   
@@ -248,8 +248,8 @@ InputCountInsufficientError :: Natural -> Natural -> InputCountInsufficientError
 --   
 --   See <a>calculateLimit</a>.
 newtype InputLimitExceededError
-InputLimitExceededError :: Word8 -> InputLimitExceededError
-[calculatedInputLimit] :: InputLimitExceededError -> Word8
+InputLimitExceededError :: Word16 -> InputLimitExceededError
+[calculatedInputLimit] :: InputLimitExceededError -> Word16
 
 -- | Indicates that all available entries in <a>inputsAvailable</a> were
 --   depleted <i>before</i> all the payments in <a>outputsRequested</a>
@@ -662,8 +662,9 @@ module Cardano.CoinSelection.Migration
 --   restriction about how addresses are generated).
 --   
 --   It tries to fit as many inputs as possible in a single transaction
---   (fixed by the <a>Word8</a> maximum number of inputs given as argument.
+--   (fixed by the <a>Word16</a> maximum number of inputs given as
+--   argument.
 --   
 --   The fee options are used to balance the coin selections and fix a
 --   threshold for dust that is removed from the selections.
-selectCoins :: forall i o. (Ord i, Ord o) => FeeOptions i o -> Word8 -> CoinMap i -> [CoinSelection i o]
+selectCoins :: forall i o. (Ord i, Ord o) => FeeOptions i o -> Word16 -> CoinMap i -> [CoinSelection i o]

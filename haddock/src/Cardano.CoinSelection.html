@@ -69,7 +69,7 @@
 </span><a name="line-69"></a><span class="hs-keyword">import</span><span> </span><span class="hs-identifier">Data.Map.Strict</span><span>
 </span><a name="line-70"></a><span>    </span><span class="hs-special">(</span><span> </span><span class="hs-identifier hs-type">Map</span><span> </span><span class="hs-special">)</span><span>
 </span><a name="line-71"></a><span class="hs-keyword">import</span><span> </span><span class="hs-identifier">Data.Word</span><span>
-</span><a name="line-72"></a><span>    </span><span class="hs-special">(</span><span> </span><span class="hs-identifier hs-type">Word8</span><span> </span><span class="hs-special">)</span><span>
+</span><a name="line-72"></a><span>    </span><span class="hs-special">(</span><span> </span><span class="hs-identifier hs-type">Word16</span><span> </span><span class="hs-special">)</span><span>
 </span><a name="line-73"></a><span class="hs-keyword">import</span><span> </span><span class="hs-identifier">GHC.Generics</span><span>
 </span><a name="line-74"></a><span>    </span><span class="hs-special">(</span><span> </span><span class="hs-identifier hs-type">Generic</span><span> </span><span class="hs-special">)</span><span>
 </span><a name="line-75"></a><span class="hs-keyword">import</span><span> </span><a href="Internal.Coin.html"><span class="hs-identifier">Internal.Coin</span></a><span>
@@ -277,7 +277,7 @@
 </span><a name="line-277"></a><span class="hs-comment">--</span><span>
 </span><a name="line-278"></a><span class="hs-keyword">newtype</span><span> </span><a name="CoinSelectionLimit"><a href="Cardano.CoinSelection.html#CoinSelectionLimit"><span class="hs-identifier">CoinSelectionLimit</span></a></a><span> </span><span class="hs-glyph">=</span><span> </span><a name="CoinSelectionLimit"><a href="Cardano.CoinSelection.html#CoinSelectionLimit"><span class="hs-identifier">CoinSelectionLimit</span></a></a><span>
 </span><a name="line-279"></a><span>    </span><span class="hs-special">{</span><span> </span><a name="calculateLimit"><a href="Cardano.CoinSelection.html#calculateLimit"><span class="hs-identifier">calculateLimit</span></a></a><span>
-</span><a name="line-280"></a><span>        </span><span class="hs-glyph">::</span><span> </span><span class="hs-identifier hs-type">Word8</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-identifier hs-type">Word8</span><span>
+</span><a name="line-280"></a><span>        </span><span class="hs-glyph">::</span><span> </span><span class="hs-identifier hs-type">Word16</span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="hs-identifier hs-type">Word16</span><span>
 </span><a name="line-281"></a><span>            </span><span class="hs-comment">-- ^ Calculate the maximum number of inputs allowed for a given</span><span>
 </span><a name="line-282"></a><span>            </span><span class="hs-comment">-- number of outputs.</span><span>
 </span><a name="line-283"></a><span>    </span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-identifier hs-type">Generic</span><span>
@@ -343,7 +343,7 @@
 </span><a name="line-343"></a><span class="hs-comment">--</span><span>
 </span><a name="line-344"></a><span class="hs-keyword">newtype</span><span> </span><a name="InputLimitExceededError"><a href="Cardano.CoinSelection.html#InputLimitExceededError"><span class="hs-identifier">InputLimitExceededError</span></a></a><span> </span><span class="hs-glyph">=</span><span>
 </span><a name="line-345"></a><span>    </span><a name="InputLimitExceededError"><a href="Cardano.CoinSelection.html#InputLimitExceededError"><span class="hs-identifier">InputLimitExceededError</span></a></a><span>
-</span><a name="line-346"></a><span>    </span><span class="hs-special">{</span><span> </span><a name="calculatedInputLimit"><a href="Cardano.CoinSelection.html#calculatedInputLimit"><span class="hs-identifier">calculatedInputLimit</span></a></a><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-identifier hs-type">Word8</span><span> </span><span class="hs-special">}</span><span>
+</span><a name="line-346"></a><span>    </span><span class="hs-special">{</span><span> </span><a name="calculatedInputLimit"><a href="Cardano.CoinSelection.html#calculatedInputLimit"><span class="hs-identifier">calculatedInputLimit</span></a></a><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-identifier hs-type">Word16</span><span> </span><span class="hs-special">}</span><span>
 </span><a name="line-347"></a><span>    </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span class="hs-identifier hs-type">Eq</span><span class="hs-special">,</span><span> </span><span class="hs-identifier hs-type">Show</span><span class="hs-special">)</span><span>
 </span><a name="line-348"></a><span>
 </span><a name="line-349"></a><span class="hs-comment">--------------------------------------------------------------------------------</span><span>
