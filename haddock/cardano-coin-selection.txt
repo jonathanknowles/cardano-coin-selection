@@ -292,7 +292,7 @@ instance GHC.Classes.Ord a => GHC.Base.Semigroup (Cardano.CoinSelection.CoinMap 
 
 -- | This module contains an implementation of the <b>Random-Improve</b>
 --   coin selection algorithm.
-module Cardano.CoinSelection.RandomImprove
+module Cardano.CoinSelection.Algorithm.RandomImprove
 
 -- | An implementation of the <b>Random-Improve</b> coin selection
 --   algorithm.
@@ -444,7 +444,7 @@ randomImprove :: (Ord i, Ord o, MonadRandom m) => CoinSelectionAlgorithm i o m
 
 -- | This module contains an implementation of the <b>Largest-First</b>
 --   coin selection algorithm.
-module Cardano.CoinSelection.LargestFirst
+module Cardano.CoinSelection.Algorithm.LargestFirst
 
 -- | An implementation of the <b>Largest-First</b> coin selection
 --   algorithm.
@@ -553,7 +553,7 @@ largestFirst :: (Ord i, Ord o, Monad m) => CoinSelectionAlgorithm i o m
 
 -- | Provides functionality for <b>adjusting</b> coin selections in order
 --   to pay for transaction <b>fees</b>.
-module Cardano.CoinSelection.Fee
+module Cardano.Fee
 
 -- | Represents a non-negative fee to be paid on a transaction.
 newtype Fee
@@ -681,20 +681,20 @@ DustThreshold :: Coin -> DustThreshold
 --   &gt;&gt;&gt; all (/= Coin 0) (coalesceDust threshold coins)
 --   </pre>
 coalesceDust :: DustThreshold -> NonEmpty Coin -> [Coin]
-instance GHC.Classes.Eq Cardano.CoinSelection.Fee.FeeAdjustmentError
-instance GHC.Show.Show Cardano.CoinSelection.Fee.FeeAdjustmentError
-instance GHC.Generics.Generic (Cardano.CoinSelection.Fee.FeeOptions i o)
-instance GHC.Generics.Generic (Cardano.CoinSelection.Fee.FeeEstimator i o)
-instance GHC.Show.Show Cardano.CoinSelection.Fee.DustThreshold
-instance GHC.Classes.Ord Cardano.CoinSelection.Fee.DustThreshold
-instance GHC.Generics.Generic Cardano.CoinSelection.Fee.DustThreshold
-instance GHC.Classes.Eq Cardano.CoinSelection.Fee.DustThreshold
-instance GHC.Show.Show Cardano.CoinSelection.Fee.Fee
-instance GHC.Classes.Ord Cardano.CoinSelection.Fee.Fee
-instance GHC.Generics.Generic Cardano.CoinSelection.Fee.Fee
-instance GHC.Classes.Eq Cardano.CoinSelection.Fee.Fee
-instance GHC.Base.Semigroup Cardano.CoinSelection.Fee.Fee
-instance GHC.Base.Monoid Cardano.CoinSelection.Fee.Fee
+instance GHC.Classes.Eq Cardano.Fee.FeeAdjustmentError
+instance GHC.Show.Show Cardano.Fee.FeeAdjustmentError
+instance GHC.Generics.Generic (Cardano.Fee.FeeOptions i o)
+instance GHC.Generics.Generic (Cardano.Fee.FeeEstimator i o)
+instance GHC.Show.Show Cardano.Fee.DustThreshold
+instance GHC.Classes.Ord Cardano.Fee.DustThreshold
+instance GHC.Generics.Generic Cardano.Fee.DustThreshold
+instance GHC.Classes.Eq Cardano.Fee.DustThreshold
+instance GHC.Show.Show Cardano.Fee.Fee
+instance GHC.Classes.Ord Cardano.Fee.Fee
+instance GHC.Generics.Generic Cardano.Fee.Fee
+instance GHC.Classes.Eq Cardano.Fee.Fee
+instance GHC.Base.Semigroup Cardano.Fee.Fee
+instance GHC.Base.Monoid Cardano.Fee.Fee
 
 
 -- | This module contains an algorithm to select coins for migration from
@@ -725,7 +725,7 @@ instance GHC.Base.Monoid Cardano.CoinSelection.Fee.Fee
 --   to make them sequentially, waiting for the previous ones to be
 --   inserted before making new ones (we also say that a wallet is not
 --   "fragmented enough").
-module Cardano.CoinSelection.Migration
+module Cardano.CoinSelection.Algorithm.Migration
 
 -- | Construct a list of coin selections / transactions to transfer the
 --   totality of a user's wallet. The resulting <a>CoinSelection</a> do not
