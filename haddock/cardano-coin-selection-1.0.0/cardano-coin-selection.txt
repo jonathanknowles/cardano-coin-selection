@@ -560,11 +560,27 @@ newtype Fee
 Fee :: Coin -> Fee
 [unFee] :: Fee -> Coin
 
--- | Provides a function capable of estimating the fee for a given coin
---   selection.
+-- | Provides a function capable of <b>estimating</b> the transaction fee
+--   required for a given coin selection, according to the rules of a
+--   particular blockchain.
 --   
---   The fee estimate can depend on the numbers of inputs, outputs, and
---   change outputs within the coin selection, as well as their magnitudes.
+--   The fee estimate should be a function of the <b>current</b>
+--   memberships of the <a>inputs</a>, <a>outputs</a>, and <a>change</a>
+--   sets.
+--   
+--   Depending on the rules of the blockchain under consideration, the fee
+--   estimate may take either (or both) of the following factors into
+--   account:
+--   
+--   <ul>
+--   <li>the number of entries in each set;</li>
+--   <li>the coin value of each set member.</li>
+--   </ul>
+--   
+--   A fee estimate may differ from the final fee required for a selection,
+--   as fees are generally paid for by <i>adjusting</i> a given selection
+--   to make a <i>new</i> selection. See <a>adjustForFee</a> for more
+--   details of this process.
 newtype FeeEstimator i o
 FeeEstimator :: (CoinSelection i o -> Fee) -> FeeEstimator i o
 [estimateFee] :: FeeEstimator i o -> CoinSelection i o -> Fee
@@ -580,14 +596,14 @@ FeeEstimator :: (CoinSelection i o -> Fee) -> FeeEstimator i o
 --   following equality:
 --   
 --   <pre>
---   &gt;&gt;&gt; sumInputs c = sumOutputs c + sumChange c
+--   &gt;&gt;&gt; sumInputs s = sumOutputs s + sumChange s
 --   </pre>
 --   
 --   In order to pay for a transaction fee, the above equality must be
 --   transformed into an <i>inequality</i>:
 --   
 --   <pre>
---   &gt;&gt;&gt; sumInputs c &gt; sumOutputs c + sumChange c
+--   &gt;&gt;&gt; sumInputs s &gt; sumOutputs s + sumChange s
 --   </pre>
 --   
 --   The difference between these two sides represents value to be paid
@@ -595,7 +611,7 @@ FeeEstimator :: (CoinSelection i o -> Fee) -> FeeEstimator i o
 --   fee:
 --   
 --   <pre>
---   &gt;&gt;&gt; sumInputs c = sumOutputs c + sumChange c + fee
+--   &gt;&gt;&gt; sumInputs s = sumOutputs s + sumChange s + fee
 --   </pre>
 --   
 --   <h2>The Adjustment Process</h2>
@@ -634,23 +650,105 @@ FeeEstimator :: (CoinSelection i o -> Fee) -> FeeEstimator i o
 --   <a>estimateFee</a>, the process of adjustment is an <i>iterative</i>
 --   process.
 --   
---   This function terminates when it has generated a <a>CoinSelection</a>
---   that satisfies the following property:
+--   The termination post-condition depends on the choice of
+--   <a>FeeBalancingPolicy</a>:
 --   
---   <pre>
---   &gt;&gt;&gt; sumInputs c ≈ sumOutputs c + sumChange c + estimateFee c
---   </pre>
-adjustForFee :: (Ord i, Show i, Show o, MonadRandom m) => FeeOptions i o -> CoinMap i -> CoinSelection i o -> ExceptT FeeAdjustmentError m (CoinSelection i o)
+--   <ul>
+--   <li>If <a>RequireBalancedFee</a> is specified, this function
+--   terminates only when it has generated a <a>CoinSelection</a>
+--   <b><tt>s</tt></b> that satisfies the following
+--   property:<pre>&gt;&gt;&gt; sumInputs s = sumOutputs s + sumChange s +
+--   estimateFee s </pre></li>
+--   <li>If <a>RequireMinimalFee</a> policy is specified, the above
+--   <i>equality</i> is relaxed to the following
+--   <i>inequality</i>:<pre>&gt;&gt;&gt; sumInputs s ≥ sumOutputs s +
+--   sumChange s + estimateFee s </pre></li>
+--   </ul>
+--   
+--   See <a>FeeBalancingPolicy</a> for more details.
+adjustForFee :: (Ord i, MonadRandom m) => FeeOptions i o -> CoinMap i -> CoinSelection i o -> ExceptT (FeeAdjustmentError i o) m (CoinSelection i o)
 
 -- | Provides options for fee adjustment.
 data FeeOptions i o
-FeeOptions :: FeeEstimator i o -> DustThreshold -> FeeOptions i o
+FeeOptions :: FeeEstimator i o -> DustThreshold -> FeeBalancingPolicy -> FeeOptions i o
+
+-- | Estimate fees based on selected inputs and requested outputs.
 [feeEstimator] :: FeeOptions i o -> FeeEstimator i o
+
+-- | The threshold to use for dust elimination. Specifying a threshold of
+--   zero will disable dust elimination. See <a>DustThreshold</a> for more
+--   details.
 [dustThreshold] :: FeeOptions i o -> DustThreshold
+
+-- | What do to when we encounter a dangling change output. See
+--   <a>FeeBalancingPolicy</a>
+[feeBalancingPolicy] :: FeeOptions i o -> FeeBalancingPolicy
+
+-- | A choice of fee balancing policies for use when adjusting a coin
+--   selection.
+--   
+--   <h2>Background</h2>
+--   
+--   A coin selection <b><tt>s</tt></b> is said to have a
+--   <i>perfectly-balanced</i> fee when it satisfies the following
+--   property:
+--   
+--   <pre>
+--   &gt;&gt;&gt; sumInputs s = sumOutputs s + sumChange s + estimateFee s
+--   </pre>
+--   
+--   Conversely, a selection is said to have an <i>unbalanced</i> fee when
+--   it satisfies the following property:
+--   
+--   <pre>
+--   &gt;&gt;&gt; sumInputs s &gt; sumOutputs s + sumChange s + estimateFee s
+--   </pre>
+--   
+--   In other words, if a coin selection has an <i>unbalanced</i> fee, the
+--   <i>effective</i> fee is greater than the minimum fee <i>actually
+--   required</i> by the blockchain.
+--   
+--   <h2>Balanced Fees vs Minimal Fees</h2>
+--   
+--   Some blockchains <i>require </i>that fees are always
+--   <i>perfectly-balanced</i>.
+--   
+--   However, for blockchains that allow <i>unbalanced</i> fees, it is
+--   sometimes possible to <i>save money</i> by generating a coin selection
+--   with an unbalanced fee. This may seem counterintuitive at first, but
+--   consider an individual change ouput <b><i>c</i></b> of value
+--   <b><i>v</i></b>. If the <i>marginal fee</i> <b><i>f</i></b> associated
+--   with <b><i>c</i></b> is greater than its value <b><i>v</i></b>, then
+--   we will <i>save money</i> by <b>not</b> including <b><i>c</i></b>
+--   within <a>change</a>.
+--   
+--   There are two policy choices available for handling change values with
+--   marginal fees greater than their value:
+--   
+--   <ul>
+--   <li>For blockchains that <b>allow</b> transactions with
+--   <i>unbalanced</i> fees, specifying the <a>RequireMinimalFee</a> policy
+--   will allow money to be saved by <i>excluding</i> change outputs that
+--   have a marginal fee greater than their value.</li>
+--   <li>For blockchains that do <b>not</b> allow transactions with
+--   <i>unbalanced</i> fees, specifying the <a>RequireBalancedFee</a>
+--   policy will always generate selections with fees that are
+--   perfectly-balanced, even if the resulting fees are higher than could
+--   be achieved by allowing unbalanced fees.</li>
+--   </ul>
+data FeeBalancingPolicy
+
+-- | Generate selections with fees that are perfectly balanced, with the
+--   trade-off of allowing slightly higher fees.
+RequireBalancedFee :: FeeBalancingPolicy
+
+-- | Generate selections with the lowest fees possible, with the trade-off
+--   of allowing slightly imbalanced fees.
+RequireMinimalFee :: FeeBalancingPolicy
 
 -- | Represents the set of possible failures that can occur when adjusting
 --   a <a>CoinSelection</a> with the <a>adjustForFee</a> function.
-newtype FeeAdjustmentError
+data FeeAdjustmentError i o
 
 -- | Indicates that the given map of additional inputs was exhausted while
 --   attempting to select extra inputs to cover the required fee.
@@ -658,13 +756,30 @@ newtype FeeAdjustmentError
 --   Records the shortfall (<b><i>f</i></b> − <b><i>s</i></b>) between the
 --   required fee <b><i>f</i></b> and the total value <b><i>s</i></b> of
 --   currently-selected inputs.
-CannotCoverFee :: Fee -> FeeAdjustmentError
+CannotCoverFee :: Fee -> FeeAdjustmentError i o
 
--- | Defines the maximum size of a dust coin.
+-- | Indicates that the given coin selection is <b>underfunded</b>: the
+--   total value of <a>inputs</a> is less than the total value of
+--   <a>outputs</a>, as calculated by the <a>coinMapValue</a> function.
+CoinSelectionUnderfunded :: CoinSelection i o -> FeeAdjustmentError i o
+
+-- | Defines the <i>maximum</i> size of a <b>dust coin</b>.
 --   
---   Change values that are less than or equal to this threshold will not
---   be included in coin selections produced by the <a>adjustForFee</a>
---   function.
+--   Functions that accept a <a>DustThreshold</a> argument will generally
+--   exclude values that are <i>less than or equal to</i> this threshold
+--   from the <a>change</a> sets of generated selections, <i>coalescing</i>
+--   such coins together into larger coins that <i>exceed</i> the
+--   threshold.
+--   
+--   Specifying a dust threshold of <b><i>n</i></b> causes all coins that
+--   are less than or equal to <b><i>n</i></b> to be treated as dust and
+--   coalesced together.
+--   
+--   Specifying a dust threshold of <b>0</b> completely <i>disables</i>
+--   dust elimination with the exception of zero-valued coins, which will
+--   always be eliminated.
+--   
+--   See <a>coalesceDust</a>.
 newtype DustThreshold
 DustThreshold :: Coin -> DustThreshold
 [unDustThreshold] :: DustThreshold -> Coin
@@ -681,9 +796,12 @@ DustThreshold :: Coin -> DustThreshold
 --   &gt;&gt;&gt; all (/= Coin 0) (coalesceDust threshold coins)
 --   </pre>
 coalesceDust :: DustThreshold -> NonEmpty Coin -> [Coin]
-instance GHC.Classes.Eq Cardano.CoinSelection.Fee.FeeAdjustmentError
-instance GHC.Show.Show Cardano.CoinSelection.Fee.FeeAdjustmentError
+instance (GHC.Classes.Eq i, GHC.Classes.Eq o) => GHC.Classes.Eq (Cardano.CoinSelection.Fee.FeeAdjustmentError i o)
+instance (GHC.Show.Show i, GHC.Show.Show o) => GHC.Show.Show (Cardano.CoinSelection.Fee.FeeAdjustmentError i o)
 instance GHC.Generics.Generic (Cardano.CoinSelection.Fee.FeeOptions i o)
+instance GHC.Classes.Eq Cardano.CoinSelection.Fee.FeeBalancingPolicy
+instance GHC.Show.Show Cardano.CoinSelection.Fee.FeeBalancingPolicy
+instance GHC.Generics.Generic Cardano.CoinSelection.Fee.FeeBalancingPolicy
 instance GHC.Generics.Generic (Cardano.CoinSelection.Fee.FeeEstimator i o)
 instance GHC.Show.Show Cardano.CoinSelection.Fee.DustThreshold
 instance GHC.Classes.Ord Cardano.CoinSelection.Fee.DustThreshold
@@ -697,45 +815,45 @@ instance GHC.Base.Semigroup Cardano.CoinSelection.Fee.Fee
 instance GHC.Base.Monoid Cardano.CoinSelection.Fee.Fee
 
 
--- | This module contains an algorithm to select coins for migration from
---   legacy wallets to newer wallets.
+-- | This module contains an algorithm for migrating all funds from one
+--   wallet to another.
 --   
---   We want users to be able to migrate their funds from a legacy random
---   wallet to a new sequential wallet. To do this, we have to move funds
---   from a wallet to another by making transactions. Funds are ultimately
---   a sum of many coins (a.k.a UTxOs). In a transaction, we can select a
---   few coins, and send them to addresses, effectively creating new coins
---   / UTxOs doing this.
---   
---   There are some limitations regarding the number of coins that can be
---   selected at once in a single transaction (theoretically 255 coins, in
---   practice ~170) because there's a transaction max size (in bytes)
---   enforced by the network. Also, there's a direct relationship between
---   the maximum number of inputs we can select, and the maximum number of
---   outputs we can produce (increasing one will decrease the other, and
---   vice-versa).
---   
---   When making a transaction, coins used as inputs for a transaction
---   becomes unavailable for a while, until the transaction is inserted
---   into the ledger and, make some new coins available as change (very
---   much like when paying with bank notes to a shop, if we give a 20 EUR
---   note to pay for 3 EUR, we can't spend the remaining 17 EUR before we
---   have received the change!). So, a wallet with a small number of UTxO
---   will not be able to make many transactions in parallel and will have
---   to make them sequentially, waiting for the previous ones to be
---   inserted before making new ones (we also say that a wallet is not
---   "fragmented enough").
+--   See <a>selectCoins</a>.
 module Cardano.CoinSelection.Algorithm.Migration
 
--- | Construct a list of coin selections / transactions to transfer the
---   totality of a user's wallet. The resulting <a>CoinSelection</a> do not
---   contain any <a>outputs</a>, but only change coins (so there's no
---   restriction about how addresses are generated).
+-- | Creates a <b>series</b> of coin selections that, when published as
+--   transactions, will have the effect of migrating all funds from one
+--   wallet to another.
 --   
---   It tries to fit as many inputs as possible in a single transaction
---   (fixed by the <a>Word16</a> maximum number of inputs given as
---   argument.
+--   Since UTxO-based blockchains typically impose limits on the sizes of
+--   individual transactions, and since individual UTxO sets can contain
+--   <i>arbitrarily</i> many entries, migrating all funds from one wallet
+--   to another may require the creation of <i>several</i> transactions.
 --   
---   The fee options are used to balance the coin selections and fix a
---   threshold for dust that is removed from the selections.
-selectCoins :: forall i o. (Ord i, Ord o) => FeeOptions i o -> Word16 -> CoinMap i -> [CoinSelection i o]
+--   This function therefore <i>partitions</i> the given set of inputs into
+--   multiple <i>batches</i> of up to <b><i>b</i></b> inputs, where
+--   <b><i>b</i></b> is specified by the given <a>BatchSize</a> parameter.
+--   (See <a>idealBatchSize</a> for an automatic way to calculate a
+--   suitable batch size.)
+--   
+--   For each batch of inputs, this function creates a separate
+--   <a>CoinSelection</a> with the given <a>inputs</a> <i>and</i> a
+--   generated <a>change</a> set, where the <a>change</a> set represents
+--   the value to be transferred to the target wallet, carefully adjusted
+--   to deduct a fee in accordance with the given <a>FeeOptions</a>
+--   parameter. The set of <a>outputs</a> for each coin selection is
+--   <i>purposefully</i> left empty, as <i>all</i> value is captured in the
+--   <a>change</a> set.
+selectCoins :: forall i o. (Ord i, Ord o) => FeeOptions i o -> BatchSize -> CoinMap i -> [CoinSelection i o]
+
+-- | An upper limit for the number of <a>inputs</a> to include in each coin
+--   selection generated by <a>selectCoins</a>.
+newtype BatchSize
+BatchSize :: Word16 -> BatchSize
+
+-- | Calculate an ideal batch size based on the given coin selection limit.
+idealBatchSize :: CoinSelectionLimit -> BatchSize
+instance GHC.Show.Show Cardano.CoinSelection.Algorithm.Migration.BatchSize
+instance GHC.Classes.Ord Cardano.CoinSelection.Algorithm.Migration.BatchSize
+instance GHC.Generics.Generic Cardano.CoinSelection.Algorithm.Migration.BatchSize
+instance GHC.Classes.Eq Cardano.CoinSelection.Algorithm.Migration.BatchSize
