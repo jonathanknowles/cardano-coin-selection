@@ -737,8 +737,7 @@ FeeOptions :: FeeEstimator i o -> DustThreshold -> FeeBalancingPolicy -> FeeOpti
 --   details.
 [dustThreshold] :: FeeOptions i o -> DustThreshold
 
--- | What do to when we encounter a dangling change output. See
---   <a>FeeBalancingPolicy</a>
+-- | Which fee balancing policy to use.
 [feeBalancingPolicy] :: FeeOptions i o -> FeeBalancingPolicy
 
 -- | A choice of fee balancing policies for use when adjusting a coin
