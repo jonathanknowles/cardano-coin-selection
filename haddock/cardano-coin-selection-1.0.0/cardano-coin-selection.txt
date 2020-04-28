@@ -10,6 +10,54 @@
 @version 1.0.0
 
 
+-- | <b>Submodules</b> of this module provide implementations of <b>coin
+--   selection algorithms</b>.
+--   
+--   Algorithms can be divided into two categories:
+--   
+--   <ul>
+--   <li><a>Generalized Algorithms</a>Algorithms that implement the general
+--   <a>CoinSelectionAlgorithm</a> interface.</li>
+--   <li><a>Specialized Algorithms</a>Algorithms that provide functionality
+--   suited to specialized purposes.</li>
+--   </ul>
+--   
+--   <h1>Generalized Algorithms </h1>
+--   
+--   The following algorithms implement the general
+--   <a>CoinSelectionAlgorithm</a> interface:
+--   
+--   <ul>
+--   <li><b><a>Cardano.CoinSelection.Algorithm.LargestFirst</a></b>Provides
+--   an implementation of the <b>Largest-First</b> algorithm.When selecting
+--   inputs from a given set of UTxO entries, this algorithm always selects
+--   the <i>largest</i> entries <i>first</i>.</li>
+--   
+--   <li><b><a>Cardano.CoinSelection.Algorithm.RandomImprove</a></b>Provides
+--   an implementation of the <b>Random-Improve</b> algorithm.When
+--   selecting inputs from a given set of UTxO entries, this algorithm
+--   always selects entries at <i>random</i>.Once selections have been
+--   made, a second phase attempts to <i>improve</i> on each of the
+--   existing selections in order to optimize change outputs.</li>
+--   </ul>
+--   
+--   For <b>guidance on choosing an algorithm</b> that's appropriate for
+--   your scenario, please consult the following article:
+--   
+--   <a>https://iohk.io/blog/self-organisation-in-coin-selection/</a>
+--   
+--   <h1>Specialized Algorithms </h1>
+--   
+--   The following algorithms provide functionality suited to specialized
+--   purposes:
+--   
+--   <ul>
+--   <li><b><a>Cardano.CoinSelection.Algorithm.Migration</a></b>Provides an
+--   algorithm for migrating all funds from one wallet to another.</li>
+--   </ul>
+module Cardano.CoinSelection.Algorithm
+
+
 -- | Provides general functions and types relating to coin selection.
 --   
 --   The <a>CoinSelection</a> type represents a <b>coin selection</b>, the
@@ -17,6 +65,12 @@
 --   
 --   The <a>CoinSelectionAlgorithm</a> type provides a <b>common
 --   interface</b> to algorithms that generate coin selections.
+--   
+--   For a guide to <b>algorithms provided by this library</b>, see the
+--   <a>Cardano.CoinSelection.Algorithm</a> module.
+--   
+--   To adjust coin selections in order to <b>pay for transaction fees</b>,
+--   see the <a>Cardano.CoinSelection.Fee</a> module.
 module Cardano.CoinSelection
 
 -- | A <b>coin selection</b> is the basis for a <i>transaction</i>.
@@ -74,6 +128,9 @@ sumChange :: CoinSelection i o -> Coin
 --   and <i>requested</i> <i>outputs</i>), will generate a
 --   <a>CoinSelectionResult</a> (with <i>remaining inputs</i> and a <i>coin
 --   selection</i>).
+--   
+--   For implementations provided by this library, see
+--   <a>Cardano.CoinSelection.Algorithm</a>.
 newtype CoinSelectionAlgorithm i o m
 CoinSelectionAlgorithm :: (CoinSelectionParameters i o -> ExceptT CoinSelectionError m (CoinSelectionResult i o)) -> CoinSelectionAlgorithm i o m
 [selectCoins] :: CoinSelectionAlgorithm i o m -> CoinSelectionParameters i o -> ExceptT CoinSelectionError m (CoinSelectionResult i o)
