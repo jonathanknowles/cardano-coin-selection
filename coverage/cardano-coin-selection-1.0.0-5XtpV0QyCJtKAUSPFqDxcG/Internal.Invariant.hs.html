@@ -1,0 +1,58 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# OPTIONS_HADDOCK hide #-}
+<span class="lineno">    2 </span>
+<span class="lineno">    3 </span>-- |
+<span class="lineno">    4 </span>-- Copyright: © 2018-2020 IOHK
+<span class="lineno">    5 </span>-- License: Apache-2.0
+<span class="lineno">    6 </span>--
+<span class="lineno">    7 </span>-- Provides internal functions relating to verification of invariants.
+<span class="lineno">    8 </span>--
+<span class="lineno">    9 </span>module Internal.Invariant
+<span class="lineno">   10 </span>    ( invariant
+<span class="lineno">   11 </span>    ) where
+<span class="lineno">   12 </span>
+<span class="lineno">   13 </span>import Prelude
+<span class="lineno">   14 </span>
+<span class="lineno">   15 </span>-- | Checks whether or not an invariant holds, by applying the given predicate
+<span class="lineno">   16 </span>--   to the given value.
+<span class="lineno">   17 </span>--
+<span class="lineno">   18 </span>-- If the invariant does not hold (indicated by the predicate function
+<span class="lineno">   19 </span>-- returning 'False'), throws an error with the specified message.
+<span class="lineno">   20 </span>--
+<span class="lineno">   21 </span>-- &gt;&gt;&gt; invariant &quot;not empty&quot; [1,2,3] (not . null)
+<span class="lineno">   22 </span>-- [1, 2, 3]
+<span class="lineno">   23 </span>--
+<span class="lineno">   24 </span>-- &gt;&gt;&gt; invariant &quot;not empty&quot; [] (not . null)
+<span class="lineno">   25 </span>-- *** Exception: not empty
+<span class="lineno">   26 </span>invariant
+<span class="lineno">   27 </span>    :: String
+<span class="lineno">   28 </span>        -- ^ The message
+<span class="lineno">   29 </span>    -&gt; a
+<span class="lineno">   30 </span>        -- ^ The value to test
+<span class="lineno">   31 </span>    -&gt; (a -&gt; Bool)
+<span class="lineno">   32 </span>        -- ^ The predicate
+<span class="lineno">   33 </span>    -&gt; a
+<span class="lineno">   34 </span><span class="decl"><span class="istickedoff">invariant msg a predicate =</span>
+<span class="lineno">   35 </span><span class="spaces">    </span><span class="istickedoff">if <span class="tickonlytrue">predicate a</span> then a else error msg</span></span>
+
+</pre>
+</body>
+</html>

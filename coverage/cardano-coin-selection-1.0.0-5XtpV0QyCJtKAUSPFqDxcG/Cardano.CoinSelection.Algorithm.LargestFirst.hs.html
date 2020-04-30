@@ -1,0 +1,303 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<style type="text/css">
+span.lineno { color: white; background: #aaaaaa; border-right: solid white 12px }
+span.nottickedoff { background: yellow}
+span.istickedoff { background: white }
+span.tickonlyfalse { margin: -1px; border: 1px solid #f20913; background: #f20913 }
+span.tickonlytrue  { margin: -1px; border: 1px solid #60de51; background: #60de51 }
+span.funcount { font-size: small; color: orange; z-index: 2; position: absolute; right: 20 }
+span.decl { font-weight: bold }
+span.spaces    { background: white }
+</style>
+</head>
+<body>
+<pre>
+<span class="decl"><span class="nottickedoff">never executed</span> <span class="tickonlytrue">always true</span> <span class="tickonlyfalse">always false</span></span>
+</pre>
+<pre>
+<span class="lineno">    1 </span>{-# LANGUAGE ScopedTypeVariables #-}
+<span class="lineno">    2 </span>{-# LANGUAGE TypeFamilies #-}
+<span class="lineno">    3 </span>
+<span class="lineno">    4 </span>-- |
+<span class="lineno">    5 </span>-- Copyright: © 2018-2020 IOHK
+<span class="lineno">    6 </span>-- License: Apache-2.0
+<span class="lineno">    7 </span>--
+<span class="lineno">    8 </span>-- This module contains an implementation of the __Largest-First__ coin
+<span class="lineno">    9 </span>-- selection algorithm.
+<span class="lineno">   10 </span>--
+<span class="lineno">   11 </span>module Cardano.CoinSelection.Algorithm.LargestFirst (
+<span class="lineno">   12 </span>    largestFirst
+<span class="lineno">   13 </span>  ) where
+<span class="lineno">   14 </span>
+<span class="lineno">   15 </span>import Prelude
+<span class="lineno">   16 </span>
+<span class="lineno">   17 </span>import Cardano.CoinSelection
+<span class="lineno">   18 </span>    ( CoinMapEntry (..)
+<span class="lineno">   19 </span>    , CoinSelection (..)
+<span class="lineno">   20 </span>    , CoinSelectionAlgorithm (..)
+<span class="lineno">   21 </span>    , CoinSelectionError (..)
+<span class="lineno">   22 </span>    , CoinSelectionLimit (..)
+<span class="lineno">   23 </span>    , CoinSelectionParameters (..)
+<span class="lineno">   24 </span>    , CoinSelectionResult (..)
+<span class="lineno">   25 </span>    , InputCountInsufficientError (..)
+<span class="lineno">   26 </span>    , InputLimitExceededError (..)
+<span class="lineno">   27 </span>    , InputValueInsufficientError (..)
+<span class="lineno">   28 </span>    , InputsExhaustedError (..)
+<span class="lineno">   29 </span>    , coinMapFromList
+<span class="lineno">   30 </span>    , coinMapToList
+<span class="lineno">   31 </span>    , coinMapValue
+<span class="lineno">   32 </span>    )
+<span class="lineno">   33 </span>import Control.Monad
+<span class="lineno">   34 </span>    ( foldM )
+<span class="lineno">   35 </span>import Control.Monad.Trans.Except
+<span class="lineno">   36 </span>    ( ExceptT (..), throwE )
+<span class="lineno">   37 </span>import Data.Ord
+<span class="lineno">   38 </span>    ( Down (..) )
+<span class="lineno">   39 </span>import Internal.Coin
+<span class="lineno">   40 </span>    ( Coin )
+<span class="lineno">   41 </span>
+<span class="lineno">   42 </span>import qualified Data.Foldable as F
+<span class="lineno">   43 </span>import qualified Data.List as L
+<span class="lineno">   44 </span>import qualified Internal.Coin as C
+<span class="lineno">   45 </span>
+<span class="lineno">   46 </span>-- | An implementation of the __Largest-First__ coin selection algorithm.
+<span class="lineno">   47 </span>--
+<span class="lineno">   48 </span>-- = Overview
+<span class="lineno">   49 </span>--
+<span class="lineno">   50 </span>-- The __Largest-First__ algorithm processes outputs in /descending order of/
+<span class="lineno">   51 </span>-- /value/, from /largest/ to /smallest/.
+<span class="lineno">   52 </span>--
+<span class="lineno">   53 </span>-- For each output, it repeatedly selects the /largest/ remaining unspent UTxO
+<span class="lineno">   54 </span>-- entry until the value of selected entries is greater than or equal to the
+<span class="lineno">   55 </span>-- value of that output.
+<span class="lineno">   56 </span>--
+<span class="lineno">   57 </span>-- = State Maintained by the Algorithm
+<span class="lineno">   58 </span>--
+<span class="lineno">   59 </span>-- At all stages of processing, the algorithm maintains:
+<span class="lineno">   60 </span>--
+<span class="lineno">   61 </span>--  1.  A __/remaining UTxO list/__
+<span class="lineno">   62 </span>--
+<span class="lineno">   63 </span>--      This is initially equal to the given /initial UTxO set/ parameter,
+<span class="lineno">   64 </span>--      sorted into /descending order of coin value/.
+<span class="lineno">   65 </span>--
+<span class="lineno">   66 </span>--      The /head/ of the list is always the remaining UTxO entry with the
+<span class="lineno">   67 </span>--      /largest coin value/.
+<span class="lineno">   68 </span>--
+<span class="lineno">   69 </span>--      Entries are incrementally removed from the /head/ of the list as the
+<span class="lineno">   70 </span>--      algorithm proceeds, until the list is empty.
+<span class="lineno">   71 </span>--
+<span class="lineno">   72 </span>--  2.  An __/unpaid output list/__
+<span class="lineno">   73 </span>--
+<span class="lineno">   74 </span>--      This is initially equal to the given /output list/ parameter, sorted
+<span class="lineno">   75 </span>--      into /descending order of coin value/.
+<span class="lineno">   76 </span>--
+<span class="lineno">   77 </span>--      The /head/ of the list is always the unpaid output with the
+<span class="lineno">   78 </span>--      /largest coin value/.
+<span class="lineno">   79 </span>--
+<span class="lineno">   80 </span>--      Entries are incrementally removed from the /head/ of the list as the
+<span class="lineno">   81 </span>--      algorithm proceeds, until the list is empty.
+<span class="lineno">   82 </span>--
+<span class="lineno">   83 </span>--  3.  An __/accumulated coin selection/__
+<span class="lineno">   84 </span>--
+<span class="lineno">   85 </span>--      This is initially /empty/.
+<span class="lineno">   86 </span>--
+<span class="lineno">   87 </span>--      Entries are incrementally added as each output is paid for, until the
+<span class="lineno">   88 </span>--      /unpaid output list/ is empty.
+<span class="lineno">   89 </span>--
+<span class="lineno">   90 </span>-- = Cardinality Rules
+<span class="lineno">   91 </span>--
+<span class="lineno">   92 </span>-- The algorithm requires that:
+<span class="lineno">   93 </span>--
+<span class="lineno">   94 </span>--  1.  Each output from the given /output list/ is paid for by /one or more/
+<span class="lineno">   95 </span>--      entries from the /initial UTxO set/.
+<span class="lineno">   96 </span>--
+<span class="lineno">   97 </span>--  2.  Each entry from the /initial UTxO set/ is used to pay for /at most one/
+<span class="lineno">   98 </span>--      output from the given /output list/.
+<span class="lineno">   99 </span>--
+<span class="lineno">  100 </span>--      (A single UTxO entry __cannot__ be used to pay for multiple outputs.)
+<span class="lineno">  101 </span>--
+<span class="lineno">  102 </span>-- = Order of Processing
+<span class="lineno">  103 </span>--
+<span class="lineno">  104 </span>-- The algorithm proceeds according to the following sequence of steps:
+<span class="lineno">  105 </span>--
+<span class="lineno">  106 </span>--  *   /Step 1/
+<span class="lineno">  107 </span>--
+<span class="lineno">  108 </span>--      Remove a single /unpaid output/ from the head of the
+<span class="lineno">  109 </span>--      /unpaid output list/.
+<span class="lineno">  110 </span>--
+<span class="lineno">  111 </span>--  *   /Step 2/
+<span class="lineno">  112 </span>--
+<span class="lineno">  113 </span>--      Repeatedly remove UTxO entries from the head of the
+<span class="lineno">  114 </span>--      /remaining UTxO list/ until the total value of entries removed is
+<span class="lineno">  115 </span>--      /greater than or equal to/ the value of the /removed output/.
+<span class="lineno">  116 </span>--
+<span class="lineno">  117 </span>--  *   /Step 3/
+<span class="lineno">  118 </span>--
+<span class="lineno">  119 </span>--      Use the /removed UTxO entries/ to pay for the /removed output/.
+<span class="lineno">  120 </span>--
+<span class="lineno">  121 </span>--      This is achieved by:
+<span class="lineno">  122 </span>--
+<span class="lineno">  123 </span>--      *  adding the /removed UTxO entries/ to the 'inputs' field of the
+<span class="lineno">  124 </span>--         /accumulated coin selection/.
+<span class="lineno">  125 </span>--      *  adding the /removed output/ to the 'outputs' field of the
+<span class="lineno">  126 </span>--         /accumulated coin selection/.
+<span class="lineno">  127 </span>--
+<span class="lineno">  128 </span>--  *   /Step 4/
+<span class="lineno">  129 </span>--
+<span class="lineno">  130 </span>--      If the /total value/ of the /removed UTxO entries/ is greater than the
+<span class="lineno">  131 </span>--      value of the /removed output/, generate a coin whose value is equal to
+<span class="lineno">  132 </span>--      the exact difference, and add it to the 'change' field of the
+<span class="lineno">  133 </span>--      /accumulated coin selection/.
+<span class="lineno">  134 </span>--
+<span class="lineno">  135 </span>--  *   /Step 5/
+<span class="lineno">  136 </span>--
+<span class="lineno">  137 </span>--      If the /unpaid output list/ is empty, __terminate__ here.
+<span class="lineno">  138 </span>--
+<span class="lineno">  139 </span>--      Otherwise, return to /Step 1/.
+<span class="lineno">  140 </span>--
+<span class="lineno">  141 </span>-- = Termination
+<span class="lineno">  142 </span>--
+<span class="lineno">  143 </span>-- The algorithm terminates __successfully__ if the /remaining UTxO list/ is
+<span class="lineno">  144 </span>-- not depleted before the /unpaid output list/ can be fully depleted (i.e., if
+<span class="lineno">  145 </span>-- all the outputs have been paid for).
+<span class="lineno">  146 </span>--
+<span class="lineno">  147 </span>-- The /accumulated coin selection/ and /remaining UTxO list/ are returned to
+<span class="lineno">  148 </span>-- the caller.
+<span class="lineno">  149 </span>--
+<span class="lineno">  150 </span>-- === Failure Modes
+<span class="lineno">  151 </span>--
+<span class="lineno">  152 </span>-- The algorithm terminates with an __error__ if:
+<span class="lineno">  153 </span>--
+<span class="lineno">  154 </span>--  1.  The /total value/ of the initial UTxO set (the amount of money
+<span class="lineno">  155 </span>--      /available/) is /less than/ the total value of the output list (the
+<span class="lineno">  156 </span>--      amount of money /required/).
+<span class="lineno">  157 </span>--
+<span class="lineno">  158 </span>--      See: __'InputValueInsufficientError'__.
+<span class="lineno">  159 </span>--
+<span class="lineno">  160 </span>--  2.  The /number/ of entries in the initial UTxO set is /smaller than/ the
+<span class="lineno">  161 </span>--      number of requested outputs.
+<span class="lineno">  162 </span>--
+<span class="lineno">  163 </span>--      Due to the nature of the algorithm, /at least one/ UTxO entry is
+<span class="lineno">  164 </span>--      required /for each/ output.
+<span class="lineno">  165 </span>--
+<span class="lineno">  166 </span>--      See: __'InputCountInsufficientError'__.
+<span class="lineno">  167 </span>--
+<span class="lineno">  168 </span>--  3.  Due to the particular /distribution/ of values within the initial UTxO
+<span class="lineno">  169 </span>--      set, the algorithm depletes all entries from the UTxO set /before/ it
+<span class="lineno">  170 </span>--      is able to pay for all requested outputs.
+<span class="lineno">  171 </span>--
+<span class="lineno">  172 </span>--      See: __'InputsExhaustedError'__.
+<span class="lineno">  173 </span>--
+<span class="lineno">  174 </span>--  4.  The /number/ of UTxO entries needed to pay for the requested outputs
+<span class="lineno">  175 </span>--      would /exceed/ the upper limit specified by 'limit'.
+<span class="lineno">  176 </span>--
+<span class="lineno">  177 </span>--      See: __'InputLimitExceededError'__.
+<span class="lineno">  178 </span>--
+<span class="lineno">  179 </span>-- @since 1.0.0
+<span class="lineno">  180 </span>largestFirst
+<span class="lineno">  181 </span>    :: (Ord i, Ord o, Monad m)
+<span class="lineno">  182 </span>    =&gt; CoinSelectionAlgorithm i o m
+<span class="lineno">  183 </span><span class="decl"><span class="istickedoff">largestFirst = CoinSelectionAlgorithm payForOutputs</span></span>
+<span class="lineno">  184 </span>
+<span class="lineno">  185 </span>payForOutputs
+<span class="lineno">  186 </span>    :: (Ord i, Ord o, Monad m)
+<span class="lineno">  187 </span>    =&gt; CoinSelectionParameters i o
+<span class="lineno">  188 </span>    -&gt; ExceptT CoinSelectionError m (CoinSelectionResult i o)
+<span class="lineno">  189 </span><span class="decl"><span class="istickedoff">payForOutputs params =</span>
+<span class="lineno">  190 </span><span class="spaces">    </span><span class="istickedoff">case foldM payForOutput (utxoDescending, mempty) outputsDescending of</span>
+<span class="lineno">  191 </span><span class="spaces">        </span><span class="istickedoff">Just (utxoRemaining, selection) -&gt;</span>
+<span class="lineno">  192 </span><span class="spaces">            </span><span class="istickedoff">pure $ CoinSelectionResult selection $ <span class="nottickedoff">coinMapFromList utxoRemaining</span></span>
+<span class="lineno">  193 </span><span class="spaces">        </span><span class="istickedoff">Nothing -&gt;</span>
+<span class="lineno">  194 </span><span class="spaces">            </span><span class="istickedoff">throwE errorCondition</span>
+<span class="lineno">  195 </span><span class="spaces">  </span><span class="istickedoff">where</span>
+<span class="lineno">  196 </span><span class="spaces">    </span><span class="istickedoff">errorCondition</span>
+<span class="lineno">  197 </span><span class="spaces">      </span><span class="istickedoff">| amountAvailable &lt; amountRequested =</span>
+<span class="lineno">  198 </span><span class="spaces">          </span><span class="istickedoff">InputValueInsufficient $</span>
+<span class="lineno">  199 </span><span class="spaces">              </span><span class="istickedoff">InputValueInsufficientError</span>
+<span class="lineno">  200 </span><span class="spaces">                  </span><span class="istickedoff">amountAvailable amountRequested</span>
+<span class="lineno">  201 </span><span class="spaces">      </span><span class="istickedoff">| utxoCount &lt; outputCount =</span>
+<span class="lineno">  202 </span><span class="spaces">          </span><span class="istickedoff">InputCountInsufficient $</span>
+<span class="lineno">  203 </span><span class="spaces">              </span><span class="istickedoff">InputCountInsufficientError</span>
+<span class="lineno">  204 </span><span class="spaces">                  </span><span class="istickedoff">utxoCount outputCount</span>
+<span class="lineno">  205 </span><span class="spaces">      </span><span class="istickedoff">| utxoCount &lt;= inputCountMax =</span>
+<span class="lineno">  206 </span><span class="spaces">          </span><span class="istickedoff">InputsExhausted</span>
+<span class="lineno">  207 </span><span class="spaces">              </span><span class="istickedoff">InputsExhaustedError</span>
+<span class="lineno">  208 </span><span class="spaces">      </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> =</span>
+<span class="lineno">  209 </span><span class="spaces">          </span><span class="istickedoff">InputLimitExceeded $</span>
+<span class="lineno">  210 </span><span class="spaces">              </span><span class="istickedoff">InputLimitExceededError $</span>
+<span class="lineno">  211 </span><span class="spaces">                  </span><span class="istickedoff">fromIntegral inputCountMax</span>
+<span class="lineno">  212 </span><span class="spaces">    </span><span class="istickedoff">amountAvailable =</span>
+<span class="lineno">  213 </span><span class="spaces">        </span><span class="istickedoff">coinMapValue $ inputsAvailable params</span>
+<span class="lineno">  214 </span><span class="spaces">    </span><span class="istickedoff">amountRequested =</span>
+<span class="lineno">  215 </span><span class="spaces">        </span><span class="istickedoff">coinMapValue $ outputsRequested params</span>
+<span class="lineno">  216 </span><span class="spaces">    </span><span class="istickedoff">inputCountMax = fromIntegral</span>
+<span class="lineno">  217 </span><span class="spaces">        </span><span class="istickedoff">$ calculateLimit (limit params)</span>
+<span class="lineno">  218 </span><span class="spaces">        </span><span class="istickedoff">$ <span class="nottickedoff">fromIntegral outputCount</span></span>
+<span class="lineno">  219 </span><span class="spaces">    </span><span class="istickedoff">outputCount =</span>
+<span class="lineno">  220 </span><span class="spaces">        </span><span class="istickedoff">fromIntegral $ length $ coinMapToList $ outputsRequested params</span>
+<span class="lineno">  221 </span><span class="spaces">    </span><span class="istickedoff">outputsDescending =</span>
+<span class="lineno">  222 </span><span class="spaces">        </span><span class="istickedoff">L.sortOn (Down . entryValue) $ coinMapToList $ outputsRequested params</span>
+<span class="lineno">  223 </span><span class="spaces">    </span><span class="istickedoff">utxoCount =</span>
+<span class="lineno">  224 </span><span class="spaces">        </span><span class="istickedoff">fromIntegral $ L.length $ coinMapToList $ inputsAvailable params</span>
+<span class="lineno">  225 </span><span class="spaces">    </span><span class="istickedoff">utxoDescending =</span>
+<span class="lineno">  226 </span><span class="spaces">        </span><span class="istickedoff">take (fromIntegral inputCountMax)</span>
+<span class="lineno">  227 </span><span class="spaces">            </span><span class="istickedoff">$ L.sortOn (Down . entryValue)</span>
+<span class="lineno">  228 </span><span class="spaces">            </span><span class="istickedoff">$ coinMapToList</span>
+<span class="lineno">  229 </span><span class="spaces">            </span><span class="istickedoff">$ inputsAvailable params</span></span>
+<span class="lineno">  230 </span>
+<span class="lineno">  231 </span>-- | Attempts to pay for a /single transaction output/ by selecting the
+<span class="lineno">  232 </span>--   /smallest possible/ number of entries from the /head/ of the given
+<span class="lineno">  233 </span>--   UTxO list.
+<span class="lineno">  234 </span>--
+<span class="lineno">  235 </span>-- Returns a /reduced/ list of UTxO entries, and a coin selection that is
+<span class="lineno">  236 </span>-- /updated/ to include the payment.
+<span class="lineno">  237 </span>--
+<span class="lineno">  238 </span>-- If the total value of entries in the given UTxO list is /less than/ the
+<span class="lineno">  239 </span>-- required output amount, this function will return 'Nothing'.
+<span class="lineno">  240 </span>--
+<span class="lineno">  241 </span>payForOutput
+<span class="lineno">  242 </span>    :: forall i o . (Ord i, Ord o)
+<span class="lineno">  243 </span>    =&gt; ([CoinMapEntry i], CoinSelection i o)
+<span class="lineno">  244 </span>    -&gt; CoinMapEntry o
+<span class="lineno">  245 </span>    -&gt; Maybe ([CoinMapEntry i], CoinSelection i o)
+<span class="lineno">  246 </span><span class="decl"><span class="istickedoff">payForOutput (utxoAvailable, currentSelection) out =</span>
+<span class="lineno">  247 </span><span class="spaces">    </span><span class="istickedoff">coverTarget utxoAvailable mempty</span>
+<span class="lineno">  248 </span><span class="spaces">  </span><span class="istickedoff">where</span>
+<span class="lineno">  249 </span><span class="spaces">    </span><span class="istickedoff">coverTarget</span>
+<span class="lineno">  250 </span><span class="spaces">        </span><span class="istickedoff">:: [CoinMapEntry i]</span>
+<span class="lineno">  251 </span><span class="spaces">        </span><span class="istickedoff">-&gt; [CoinMapEntry i]</span>
+<span class="lineno">  252 </span><span class="spaces">        </span><span class="istickedoff">-&gt; Maybe ([CoinMapEntry i], CoinSelection i o)</span>
+<span class="lineno">  253 </span><span class="spaces">    </span><span class="istickedoff">coverTarget utxoRemaining utxoSelected</span>
+<span class="lineno">  254 </span><span class="spaces">        </span><span class="istickedoff">| valueSelected &gt;= valueTarget = Just</span>
+<span class="lineno">  255 </span><span class="spaces">            </span><span class="istickedoff">-- We've selected enough to cover the target, so stop here.</span>
+<span class="lineno">  256 </span><span class="spaces">            </span><span class="istickedoff">( utxoRemaining</span>
+<span class="lineno">  257 </span><span class="spaces">            </span><span class="istickedoff">, currentSelection &lt;&gt; CoinSelection</span>
+<span class="lineno">  258 </span><span class="spaces">                </span><span class="istickedoff">{ inputs  = coinMapFromList utxoSelected</span>
+<span class="lineno">  259 </span><span class="spaces">                </span><span class="istickedoff">, outputs = coinMapFromList [out]</span>
+<span class="lineno">  260 </span><span class="spaces">                </span><span class="istickedoff">, change  = filter (&gt; C.zero)</span>
+<span class="lineno">  261 </span><span class="spaces">                    </span><span class="istickedoff">(F.toList $ valueSelected `C.sub` valueTarget)</span>
+<span class="lineno">  262 </span><span class="spaces">                </span><span class="istickedoff">}</span>
+<span class="lineno">  263 </span><span class="spaces">            </span><span class="istickedoff">)</span>
+<span class="lineno">  264 </span><span class="spaces">        </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> =</span>
+<span class="lineno">  265 </span><span class="spaces">            </span><span class="istickedoff">-- We haven't yet selected enough to cover the target, so attempt</span>
+<span class="lineno">  266 </span><span class="spaces">            </span><span class="istickedoff">-- to select a little more and then continue.</span>
+<span class="lineno">  267 </span><span class="spaces">            </span><span class="istickedoff">case utxoRemaining of</span>
+<span class="lineno">  268 </span><span class="spaces">                </span><span class="istickedoff">utxoEntry : utxoRemaining' -&gt;</span>
+<span class="lineno">  269 </span><span class="spaces">                    </span><span class="istickedoff">coverTarget utxoRemaining' (utxoEntry : utxoSelected)</span>
+<span class="lineno">  270 </span><span class="spaces">                </span><span class="istickedoff">[] -&gt;</span>
+<span class="lineno">  271 </span><span class="spaces">                    </span><span class="istickedoff">-- The UTxO has been exhausted, so stop here.</span>
+<span class="lineno">  272 </span><span class="spaces">                    </span><span class="istickedoff">Nothing</span>
+<span class="lineno">  273 </span><span class="spaces">      </span><span class="istickedoff">where</span>
+<span class="lineno">  274 </span><span class="spaces">        </span><span class="istickedoff">valueTarget</span>
+<span class="lineno">  275 </span><span class="spaces">            </span><span class="istickedoff">= entryValue out</span>
+<span class="lineno">  276 </span><span class="spaces">        </span><span class="istickedoff">valueSelected</span>
+<span class="lineno">  277 </span><span class="spaces">            </span><span class="istickedoff">= sumEntries utxoSelected</span></span>
+<span class="lineno">  278 </span>
+<span class="lineno">  279 </span>sumEntries :: [CoinMapEntry a] -&gt; Coin
+<span class="lineno">  280 </span><span class="decl"><span class="istickedoff">sumEntries entries = mconcat $ entryValue &lt;$&gt; entries</span></span>
+
+</pre>
+</body>
+</html>
