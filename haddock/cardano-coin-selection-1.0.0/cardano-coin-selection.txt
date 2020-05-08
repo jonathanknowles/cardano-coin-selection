@@ -330,6 +330,8 @@ instance GHC.Show.Show Cardano.CoinSelection.InputValueInsufficientError
 instance GHC.Classes.Eq Cardano.CoinSelection.InputValueInsufficientError
 instance GHC.Generics.Generic (Cardano.CoinSelection.CoinSelectionParameters i o)
 instance GHC.Generics.Generic Cardano.CoinSelection.CoinSelectionLimit
+instance (GHC.Show.Show i, GHC.Show.Show o) => GHC.Show.Show (Cardano.CoinSelection.CoinSelectionResult i o)
+instance (GHC.Classes.Eq i, GHC.Classes.Eq o) => GHC.Classes.Eq (Cardano.CoinSelection.CoinSelectionResult i o)
 instance (GHC.Classes.Eq i, GHC.Classes.Eq o) => GHC.Classes.Eq (Cardano.CoinSelection.CoinSelection i o)
 instance (GHC.Show.Show i, GHC.Show.Show o) => GHC.Show.Show (Cardano.CoinSelection.CoinSelection i o)
 instance GHC.Generics.Generic (Cardano.CoinSelection.CoinSelection i o)
@@ -506,83 +508,24 @@ module Cardano.CoinSelection.Algorithm.LargestFirst
 -- | An implementation of the <b>Largest-First</b> coin selection
 --   algorithm.
 --   
---   <h1>Overview</h1>
+--   The Largest-First coin selection algorithm considers available inputs
+--   in <i>descending</i> order of value, from <i>largest</i> to
+--   <i>smallest</i>.
 --   
---   The <b>Largest-First</b> algorithm processes outputs in <i>descending
---   order of</i> <i>value</i>, from <i>largest</i> to <i>smallest</i>.
+--   When applied to a set of requested outputs, the algorithm repeatedly
+--   selects entries from the available inputs set until the total value of
+--   selected entries is greater than or equal to the total value of
+--   requested outputs.
 --   
---   For each output, it repeatedly selects the <i>largest</i> remaining
---   unspent UTxO entry until the value of selected entries is greater than
---   or equal to the value of that output.
+--   <h3>Change Values</h3>
 --   
---   <h1>State Maintained by the Algorithm</h1>
+--   If the total value of selected inputs is <i>greater than</i> the total
+--   value of all requested outputs, the <a>change</a> set of the resulting
+--   selection will contain <i>a single coin</i> with the excess value.
 --   
---   At all stages of processing, the algorithm maintains:
---   
---   <ol>
---   <li>A <b><i>remaining UTxO list</i></b>This is initially equal to the
---   given <i>initial UTxO set</i> parameter, sorted into <i>descending
---   order of coin value</i>.The <i>head</i> of the list is always the
---   remaining UTxO entry with the <i>largest coin value</i>.Entries are
---   incrementally removed from the <i>head</i> of the list as the
---   algorithm proceeds, until the list is empty.</li>
---   <li>An <b><i>unpaid output list</i></b>This is initially equal to the
---   given <i>output list</i> parameter, sorted into <i>descending order of
---   coin value</i>.The <i>head</i> of the list is always the unpaid output
---   with the <i>largest coin value</i>.Entries are incrementally removed
---   from the <i>head</i> of the list as the algorithm proceeds, until the
---   list is empty.</li>
---   <li>An <b><i>accumulated coin selection</i></b>This is initially
---   <i>empty</i>.Entries are incrementally added as each output is paid
---   for, until the <i>unpaid output list</i> is empty.</li>
---   </ol>
---   
---   <h1>Cardinality Rules</h1>
---   
---   The algorithm requires that:
---   
---   <ol>
---   <li>Each output from the given <i>output list</i> is paid for by
---   <i>one or more</i> entries from the <i>initial UTxO set</i>.</li>
---   <li>Each entry from the <i>initial UTxO set</i> is used to pay for
---   <i>at most one</i> output from the given <i>output list</i>.(A single
---   UTxO entry <b>cannot</b> be used to pay for multiple outputs.)</li>
---   </ol>
---   
---   <h1>Order of Processing</h1>
---   
---   The algorithm proceeds according to the following sequence of steps:
---   
---   <ul>
---   <li><i>Step 1</i>Remove a single <i>unpaid output</i> from the head of
---   the <i>unpaid output list</i>.</li>
---   <li><i>Step 2</i>Repeatedly remove UTxO entries from the head of the
---   <i>remaining UTxO list</i> until the total value of entries removed is
---   <i>greater than or equal to</i> the value of the <i>removed
---   output</i>.</li>
---   <li><i>Step 3</i>Use the <i>removed UTxO entries</i> to pay for the
---   <i>removed output</i>.This is achieved by:<ul><li>adding the
---   <i>removed UTxO entries</i> to the <a>inputs</a> field of the
---   <i>accumulated coin selection</i>.</li><li>adding the <i>removed
---   output</i> to the <a>outputs</a> field of the <i>accumulated coin
---   selection</i>.</li></ul></li>
---   <li><i>Step 4</i>If the <i>total value</i> of the <i>removed UTxO
---   entries</i> is greater than the value of the <i>removed output</i>,
---   generate a coin whose value is equal to the exact difference, and add
---   it to the <a>change</a> field of the <i>accumulated coin
---   selection</i>.</li>
---   <li><i>Step 5</i>If the <i>unpaid output list</i> is empty,
---   <b>terminate</b> here.Otherwise, return to <i>Step 1</i>.</li>
---   </ul>
---   
---   <h1>Termination</h1>
---   
---   The algorithm terminates <b>successfully</b> if the <i>remaining UTxO
---   list</i> is not depleted before the <i>unpaid output list</i> can be
---   fully depleted (i.e., if all the outputs have been paid for).
---   
---   The <i>accumulated coin selection</i> and <i>remaining UTxO list</i>
---   are returned to the caller.
+--   If the total value of selected inputs is <i>exactly equal to</i> the
+--   total value of all requested outputs, the <a>change</a> set of the
+--   resulting selection will be <i>empty</i>.
 --   
 --   <h3>Failure Modes</h3>
 --   
@@ -596,16 +539,16 @@ module Cardano.CoinSelection.Algorithm.LargestFirst
 --   <li>The <i>number</i> of entries in the initial UTxO set is <i>smaller
 --   than</i> the number of requested outputs.Due to the nature of the
 --   algorithm, <i>at least one</i> UTxO entry is required <i>for each</i>
---   output.See: <b><a>InputCountInsufficientError</a></b>.</li>
+--   output.See: <b><tt>InputCountInsufficientError</tt></b>.</li>
 --   <li>Due to the particular <i>distribution</i> of values within the
 --   initial UTxO set, the algorithm depletes all entries from the UTxO set
 --   <i>before</i> it is able to pay for all requested outputs.See:
---   <b><a>InputsExhaustedError</a></b>.</li>
+--   <b><tt>InputsExhaustedError</tt></b>.</li>
 --   <li>The <i>number</i> of UTxO entries needed to pay for the requested
 --   outputs would <i>exceed</i> the upper limit specified by
 --   <a>limit</a>.See: <b><a>InputLimitExceededError</a></b>.</li>
 --   </ol>
-largestFirst :: (Ord i, Ord o, Monad m) => CoinSelectionAlgorithm i o m
+largestFirst :: (Ord i, Monad m) => CoinSelectionAlgorithm i o m
 
 
 -- | Provides functionality for <b>adjusting</b> coin selections in order

@@ -252,7 +252,7 @@ span.spaces    { background: white }
 <span class="lineno">  233 </span>        -- ^ The generated coin selection.
 <span class="lineno">  234 </span>    , <span class="istickedoff"><span class="decl"><span class="istickedoff">inputsRemaining</span></span></span> :: CoinMap i
 <span class="lineno">  235 </span>        -- ^ The set of inputs that were __not__ selected.
-<span class="lineno">  236 </span>    }
+<span class="lineno">  236 </span>    } deriving (<span class="decl"><span class="istickedoff">Eq</span></span>, <span class="decl"><span class="istickedoff">Show</span></span>)
 <span class="lineno">  237 </span>
 <span class="lineno">  238 </span>-- | A __coin selection__ is the basis for a /transaction/.
 <span class="lineno">  239 </span>--
