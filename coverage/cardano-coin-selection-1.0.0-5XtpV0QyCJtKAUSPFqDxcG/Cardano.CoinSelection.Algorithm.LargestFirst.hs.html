@@ -86,97 +86,84 @@ span.spaces    { background: white }
 <span class="lineno">   67 </span>--
 <span class="lineno">   68 </span>-- The algorithm terminates with an __error__ if:
 <span class="lineno">   69 </span>--
-<span class="lineno">   70 </span>--  1.  The /total value/ of the initial UTxO set (the amount of money
-<span class="lineno">   71 </span>--      /available/) is /less than/ the total value of the output list (the
+<span class="lineno">   70 </span>--  1.  The /total value/ of 'inputsAvailable' (the amount of money
+<span class="lineno">   71 </span>--      /available/) is /less than/ the total value of 'outputsRequested' (the
 <span class="lineno">   72 </span>--      amount of money /required/).
 <span class="lineno">   73 </span>--
 <span class="lineno">   74 </span>--      See: __'InputValueInsufficientError'__.
 <span class="lineno">   75 </span>--
-<span class="lineno">   76 </span>--  2.  The /number/ of entries in the initial UTxO set is /smaller than/ the
-<span class="lineno">   77 </span>--      number of requested outputs.
-<span class="lineno">   78 </span>--
-<span class="lineno">   79 </span>--      Due to the nature of the algorithm, /at least one/ UTxO entry is
-<span class="lineno">   80 </span>--      required /for each/ output.
+<span class="lineno">   76 </span>--  2.  It is not possible to cover the total value of 'outputsRequested'
+<span class="lineno">   77 </span>--      without selecting a number of inputs from 'inputsAvailable' that
+<span class="lineno">   78 </span>--      would exceed the maximum defined by 'limit'.
+<span class="lineno">   79 </span>--
+<span class="lineno">   80 </span>--      See: __'InputLimitExceededError'__.
 <span class="lineno">   81 </span>--
-<span class="lineno">   82 </span>--      See: __'InputCountInsufficientError'__.
-<span class="lineno">   83 </span>--
-<span class="lineno">   84 </span>--  3.  Due to the particular /distribution/ of values within the initial UTxO
-<span class="lineno">   85 </span>--      set, the algorithm depletes all entries from the UTxO set /before/ it
-<span class="lineno">   86 </span>--      is able to pay for all requested outputs.
-<span class="lineno">   87 </span>--
-<span class="lineno">   88 </span>--      See: __'InputsExhaustedError'__.
-<span class="lineno">   89 </span>--
-<span class="lineno">   90 </span>--  4.  The /number/ of UTxO entries needed to pay for the requested outputs
-<span class="lineno">   91 </span>--      would /exceed/ the upper limit specified by 'limit'.
-<span class="lineno">   92 </span>--
-<span class="lineno">   93 </span>--      See: __'InputLimitExceededError'__.
-<span class="lineno">   94 </span>--
-<span class="lineno">   95 </span>-- @since 1.0.0
-<span class="lineno">   96 </span>largestFirst
-<span class="lineno">   97 </span>    :: (Ord i, Monad m)
-<span class="lineno">   98 </span>    =&gt; CoinSelectionAlgorithm i o m
-<span class="lineno">   99 </span><span class="decl"><span class="istickedoff">largestFirst = CoinSelectionAlgorithm payForOutputs</span></span>
-<span class="lineno">  100 </span>
-<span class="lineno">  101 </span>payForOutputs
-<span class="lineno">  102 </span>    :: forall i o m . (Ord i, Monad m)
-<span class="lineno">  103 </span>    =&gt; CoinSelectionParameters i o
-<span class="lineno">  104 </span>    -&gt; ExceptT CoinSelectionError m (CoinSelectionResult i o)
-<span class="lineno">  105 </span><span class="decl"><span class="istickedoff">payForOutputs params</span>
-<span class="lineno">  106 </span><span class="spaces">    </span><span class="istickedoff">| amountAvailable &lt; amountRequired =</span>
-<span class="lineno">  107 </span><span class="spaces">        </span><span class="istickedoff">throwE</span>
-<span class="lineno">  108 </span><span class="spaces">            </span><span class="istickedoff">$ InputValueInsufficient</span>
-<span class="lineno">  109 </span><span class="spaces">            </span><span class="istickedoff">$ InputValueInsufficientError amountAvailable amountRequired</span>
-<span class="lineno">  110 </span><span class="spaces">    </span><span class="istickedoff">| length inputsSelected &gt; inputCountMax =</span>
-<span class="lineno">  111 </span><span class="spaces">        </span><span class="istickedoff">throwE</span>
-<span class="lineno">  112 </span><span class="spaces">            </span><span class="istickedoff">$ InputLimitExceeded</span>
-<span class="lineno">  113 </span><span class="spaces">            </span><span class="istickedoff">$ InputLimitExceededError</span>
-<span class="lineno">  114 </span><span class="spaces">            </span><span class="istickedoff">$ fromIntegral inputCountMax</span>
-<span class="lineno">  115 </span><span class="spaces">    </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> =</span>
-<span class="lineno">  116 </span><span class="spaces">        </span><span class="istickedoff">pure CoinSelectionResult {coinSelection, <span class="nottickedoff">inputsRemaining</span>}</span>
-<span class="lineno">  117 </span><span class="spaces">  </span><span class="istickedoff">where</span>
-<span class="lineno">  118 </span><span class="spaces">    </span><span class="istickedoff">amountAvailable =</span>
-<span class="lineno">  119 </span><span class="spaces">        </span><span class="istickedoff">coinMapValue $ inputsAvailable params</span>
-<span class="lineno">  120 </span><span class="spaces">    </span><span class="istickedoff">amountRequired =</span>
-<span class="lineno">  121 </span><span class="spaces">        </span><span class="istickedoff">coinMapValue $ outputsRequested params</span>
-<span class="lineno">  122 </span><span class="spaces">    </span><span class="istickedoff">coinSelection = CoinSelection</span>
-<span class="lineno">  123 </span><span class="spaces">        </span><span class="istickedoff">{ inputs =</span>
-<span class="lineno">  124 </span><span class="spaces">            </span><span class="istickedoff">inputsSelected</span>
-<span class="lineno">  125 </span><span class="spaces">        </span><span class="istickedoff">, outputs =</span>
-<span class="lineno">  126 </span><span class="spaces">            </span><span class="istickedoff">outputsRequested params</span>
-<span class="lineno">  127 </span><span class="spaces">        </span><span class="istickedoff">, change = filter (&gt; C.zero)</span>
-<span class="lineno">  128 </span><span class="spaces">            </span><span class="istickedoff">$ F.toList</span>
-<span class="lineno">  129 </span><span class="spaces">            </span><span class="istickedoff">$ coinMapValue inputsSelected `C.sub` amountRequired</span>
-<span class="lineno">  130 </span><span class="spaces">        </span><span class="istickedoff">}</span>
-<span class="lineno">  131 </span><span class="spaces">    </span><span class="istickedoff">inputsAvailableDescending :: [CoinMapEntry i]</span>
-<span class="lineno">  132 </span><span class="spaces">    </span><span class="istickedoff">inputsAvailableDescending = inputsAvailable params</span>
-<span class="lineno">  133 </span><span class="spaces">        </span><span class="istickedoff">&amp; coinMapToList</span>
-<span class="lineno">  134 </span><span class="spaces">        </span><span class="istickedoff">&amp; L.sortOn (Down . entryValue)</span>
-<span class="lineno">  135 </span><span class="spaces">    </span><span class="istickedoff">inputCountMax :: Int</span>
-<span class="lineno">  136 </span><span class="spaces">    </span><span class="istickedoff">inputCountMax = <span class="nottickedoff">outputsRequested params</span></span>
-<span class="lineno">  137 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">&amp; coinMapToList</span></span>
-<span class="lineno">  138 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">&amp; length</span></span>
-<span class="lineno">  139 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">&amp; fromIntegral @Int @Word16</span></span>
-<span class="lineno">  140 </span><span class="spaces">        </span><span class="istickedoff">&amp; calculateLimit (limit params)</span>
-<span class="lineno">  141 </span><span class="spaces">        </span><span class="istickedoff">&amp; fromIntegral @Word16 @Int</span>
-<span class="lineno">  142 </span><span class="spaces">    </span><span class="istickedoff">inputsSelected :: CoinMap i</span>
-<span class="lineno">  143 </span><span class="spaces">    </span><span class="istickedoff">inputsSelected = inputsAvailableDescending</span>
-<span class="lineno">  144 </span><span class="spaces">        </span><span class="istickedoff">&amp; fmap entryValue</span>
-<span class="lineno">  145 </span><span class="spaces">        </span><span class="istickedoff">&amp; scanl1 (&lt;&gt;)</span>
-<span class="lineno">  146 </span><span class="spaces">        </span><span class="istickedoff">&amp; takeUntil (&gt;= amountRequired)</span>
-<span class="lineno">  147 </span><span class="spaces">        </span><span class="istickedoff">&amp; zip inputsAvailableDescending</span>
-<span class="lineno">  148 </span><span class="spaces">        </span><span class="istickedoff">&amp; fmap fst</span>
-<span class="lineno">  149 </span><span class="spaces">        </span><span class="istickedoff">&amp; coinMapFromList</span>
-<span class="lineno">  150 </span><span class="spaces">    </span><span class="istickedoff">inputsRemaining :: CoinMap i</span>
-<span class="lineno">  151 </span><span class="spaces">    </span><span class="istickedoff"><span class="nottickedoff">inputsRemaining = inputsAvailableDescending</span></span>
-<span class="lineno">  152 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">&amp; drop (length inputsSelected)</span></span>
-<span class="lineno">  153 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">&amp; coinMapFromList</span></span></span>
-<span class="lineno">  154 </span>
-<span class="lineno">  155 </span>--------------------------------------------------------------------------------
-<span class="lineno">  156 </span>-- Utilities
-<span class="lineno">  157 </span>--------------------------------------------------------------------------------
-<span class="lineno">  158 </span>
-<span class="lineno">  159 </span>takeUntil :: (a -&gt; Bool) -&gt; [a] -&gt; [a]
-<span class="lineno">  160 </span><span class="decl"><span class="istickedoff">takeUntil p = foldr (\x ys -&gt; <span class="nottickedoff">x</span> : if p x then [] else ys) <span class="nottickedoff">[]</span></span></span>
+<span class="lineno">   82 </span>-- @since 1.0.0
+<span class="lineno">   83 </span>largestFirst
+<span class="lineno">   84 </span>    :: (Ord i, Monad m)
+<span class="lineno">   85 </span>    =&gt; CoinSelectionAlgorithm i o m
+<span class="lineno">   86 </span><span class="decl"><span class="istickedoff">largestFirst = CoinSelectionAlgorithm payForOutputs</span></span>
+<span class="lineno">   87 </span>
+<span class="lineno">   88 </span>payForOutputs
+<span class="lineno">   89 </span>    :: forall i o m . (Ord i, Monad m)
+<span class="lineno">   90 </span>    =&gt; CoinSelectionParameters i o
+<span class="lineno">   91 </span>    -&gt; ExceptT CoinSelectionError m (CoinSelectionResult i o)
+<span class="lineno">   92 </span><span class="decl"><span class="istickedoff">payForOutputs params</span>
+<span class="lineno">   93 </span><span class="spaces">    </span><span class="istickedoff">| amountAvailable &lt; amountRequired =</span>
+<span class="lineno">   94 </span><span class="spaces">        </span><span class="istickedoff">throwE</span>
+<span class="lineno">   95 </span><span class="spaces">            </span><span class="istickedoff">$ InputValueInsufficient</span>
+<span class="lineno">   96 </span><span class="spaces">            </span><span class="istickedoff">$ InputValueInsufficientError amountAvailable amountRequired</span>
+<span class="lineno">   97 </span><span class="spaces">    </span><span class="istickedoff">| length inputsSelected &gt; inputCountMax =</span>
+<span class="lineno">   98 </span><span class="spaces">        </span><span class="istickedoff">throwE</span>
+<span class="lineno">   99 </span><span class="spaces">            </span><span class="istickedoff">$ InputLimitExceeded</span>
+<span class="lineno">  100 </span><span class="spaces">            </span><span class="istickedoff">$ InputLimitExceededError</span>
+<span class="lineno">  101 </span><span class="spaces">            </span><span class="istickedoff">$ fromIntegral inputCountMax</span>
+<span class="lineno">  102 </span><span class="spaces">    </span><span class="istickedoff">| <span class="tickonlytrue">otherwise</span> =</span>
+<span class="lineno">  103 </span><span class="spaces">        </span><span class="istickedoff">pure CoinSelectionResult {coinSelection, <span class="nottickedoff">inputsRemaining</span>}</span>
+<span class="lineno">  104 </span><span class="spaces">  </span><span class="istickedoff">where</span>
+<span class="lineno">  105 </span><span class="spaces">    </span><span class="istickedoff">amountAvailable =</span>
+<span class="lineno">  106 </span><span class="spaces">        </span><span class="istickedoff">coinMapValue $ inputsAvailable params</span>
+<span class="lineno">  107 </span><span class="spaces">    </span><span class="istickedoff">amountRequired =</span>
+<span class="lineno">  108 </span><span class="spaces">        </span><span class="istickedoff">coinMapValue $ outputsRequested params</span>
+<span class="lineno">  109 </span><span class="spaces">    </span><span class="istickedoff">coinSelection = CoinSelection</span>
+<span class="lineno">  110 </span><span class="spaces">        </span><span class="istickedoff">{ inputs =</span>
+<span class="lineno">  111 </span><span class="spaces">            </span><span class="istickedoff">inputsSelected</span>
+<span class="lineno">  112 </span><span class="spaces">        </span><span class="istickedoff">, outputs =</span>
+<span class="lineno">  113 </span><span class="spaces">            </span><span class="istickedoff">outputsRequested params</span>
+<span class="lineno">  114 </span><span class="spaces">        </span><span class="istickedoff">, change = filter (&gt; C.zero)</span>
+<span class="lineno">  115 </span><span class="spaces">            </span><span class="istickedoff">$ F.toList</span>
+<span class="lineno">  116 </span><span class="spaces">            </span><span class="istickedoff">$ coinMapValue inputsSelected `C.sub` amountRequired</span>
+<span class="lineno">  117 </span><span class="spaces">        </span><span class="istickedoff">}</span>
+<span class="lineno">  118 </span><span class="spaces">    </span><span class="istickedoff">inputsAvailableDescending :: [CoinMapEntry i]</span>
+<span class="lineno">  119 </span><span class="spaces">    </span><span class="istickedoff">inputsAvailableDescending = inputsAvailable params</span>
+<span class="lineno">  120 </span><span class="spaces">        </span><span class="istickedoff">&amp; coinMapToList</span>
+<span class="lineno">  121 </span><span class="spaces">        </span><span class="istickedoff">&amp; L.sortOn (Down . entryValue)</span>
+<span class="lineno">  122 </span><span class="spaces">    </span><span class="istickedoff">inputCountMax :: Int</span>
+<span class="lineno">  123 </span><span class="spaces">    </span><span class="istickedoff">inputCountMax = <span class="nottickedoff">outputsRequested params</span></span>
+<span class="lineno">  124 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">&amp; coinMapToList</span></span>
+<span class="lineno">  125 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">&amp; length</span></span>
+<span class="lineno">  126 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">&amp; fromIntegral @Int @Word16</span></span>
+<span class="lineno">  127 </span><span class="spaces">        </span><span class="istickedoff">&amp; calculateLimit (limit params)</span>
+<span class="lineno">  128 </span><span class="spaces">        </span><span class="istickedoff">&amp; fromIntegral @Word16 @Int</span>
+<span class="lineno">  129 </span><span class="spaces">    </span><span class="istickedoff">inputsSelected :: CoinMap i</span>
+<span class="lineno">  130 </span><span class="spaces">    </span><span class="istickedoff">inputsSelected = inputsAvailableDescending</span>
+<span class="lineno">  131 </span><span class="spaces">        </span><span class="istickedoff">&amp; fmap entryValue</span>
+<span class="lineno">  132 </span><span class="spaces">        </span><span class="istickedoff">&amp; scanl1 (&lt;&gt;)</span>
+<span class="lineno">  133 </span><span class="spaces">        </span><span class="istickedoff">&amp; takeUntil (&gt;= amountRequired)</span>
+<span class="lineno">  134 </span><span class="spaces">        </span><span class="istickedoff">&amp; zip inputsAvailableDescending</span>
+<span class="lineno">  135 </span><span class="spaces">        </span><span class="istickedoff">&amp; fmap fst</span>
+<span class="lineno">  136 </span><span class="spaces">        </span><span class="istickedoff">&amp; coinMapFromList</span>
+<span class="lineno">  137 </span><span class="spaces">    </span><span class="istickedoff">inputsRemaining :: CoinMap i</span>
+<span class="lineno">  138 </span><span class="spaces">    </span><span class="istickedoff"><span class="nottickedoff">inputsRemaining = inputsAvailableDescending</span></span>
+<span class="lineno">  139 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">&amp; drop (length inputsSelected)</span></span>
+<span class="lineno">  140 </span><span class="spaces">        </span><span class="istickedoff"><span class="nottickedoff">&amp; coinMapFromList</span></span></span>
+<span class="lineno">  141 </span>
+<span class="lineno">  142 </span>--------------------------------------------------------------------------------
+<span class="lineno">  143 </span>-- Utilities
+<span class="lineno">  144 </span>--------------------------------------------------------------------------------
+<span class="lineno">  145 </span>
+<span class="lineno">  146 </span>takeUntil :: (a -&gt; Bool) -&gt; [a] -&gt; [a]
+<span class="lineno">  147 </span><span class="decl"><span class="istickedoff">takeUntil p = foldr (\x ys -&gt; <span class="nottickedoff">x</span> : if p x then [] else ys) <span class="nottickedoff">[]</span></span></span>
 
 </pre>
 </body>

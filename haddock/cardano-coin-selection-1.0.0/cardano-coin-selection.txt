@@ -532,20 +532,13 @@ module Cardano.CoinSelection.Algorithm.LargestFirst
 --   The algorithm terminates with an <b>error</b> if:
 --   
 --   <ol>
---   <li>The <i>total value</i> of the initial UTxO set (the amount of
---   money <i>available</i>) is <i>less than</i> the total value of the
---   output list (the amount of money <i>required</i>).See:
+--   <li>The <i>total value</i> of <a>inputsAvailable</a> (the amount of
+--   money <i>available</i>) is <i>less than</i> the total value of
+--   <a>outputsRequested</a> (the amount of money <i>required</i>).See:
 --   <b><a>InputValueInsufficientError</a></b>.</li>
---   <li>The <i>number</i> of entries in the initial UTxO set is <i>smaller
---   than</i> the number of requested outputs.Due to the nature of the
---   algorithm, <i>at least one</i> UTxO entry is required <i>for each</i>
---   output.See: <b><tt>InputCountInsufficientError</tt></b>.</li>
---   <li>Due to the particular <i>distribution</i> of values within the
---   initial UTxO set, the algorithm depletes all entries from the UTxO set
---   <i>before</i> it is able to pay for all requested outputs.See:
---   <b><tt>InputsExhaustedError</tt></b>.</li>
---   <li>The <i>number</i> of UTxO entries needed to pay for the requested
---   outputs would <i>exceed</i> the upper limit specified by
+--   <li>It is not possible to cover the total value of
+--   <a>outputsRequested</a> without selecting a number of inputs from
+--   <a>inputsAvailable</a> that would exceed the maximum defined by
 --   <a>limit</a>.See: <b><a>InputLimitExceededError</a></b>.</li>
 --   </ol>
 largestFirst :: (Ord i, Monad m) => CoinSelectionAlgorithm i o m
