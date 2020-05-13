@@ -7,7 +7,7 @@
 --   Please see the README on GitHub at
 --   <a>https://github.com/input-output-hk/cardano-coin-selection</a>
 @package cardano-coin-selection
-@version 1.0.0
+@version 1.0.1
 
 
 -- | <b>Submodules</b> of this module provide implementations of <b>coin
