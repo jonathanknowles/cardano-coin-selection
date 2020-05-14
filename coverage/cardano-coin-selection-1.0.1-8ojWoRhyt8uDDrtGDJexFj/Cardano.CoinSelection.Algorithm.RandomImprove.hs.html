@@ -244,7 +244,7 @@ span.spaces    { background: white }
 <span class="lineno">  225 </span><span class="spaces">                </span><span class="istickedoff">improveSelection</span>
 <span class="lineno">  226 </span><span class="spaces">                    </span><span class="istickedoff">(inputCountRemaining, mempty, utxoRemaining)</span>
 <span class="lineno">  227 </span><span class="spaces">                    </span><span class="istickedoff">(reverse randomSelections)</span>
-<span class="lineno">  228 </span><span class="spaces">            </span><span class="istickedoff">pure $ CoinSelectionResult finalSelection <span class="nottickedoff">utxoRemaining'</span></span>
+<span class="lineno">  228 </span><span class="spaces">            </span><span class="istickedoff">pure $ CoinSelectionResult finalSelection utxoRemaining'</span>
 <span class="lineno">  229 </span><span class="spaces">        </span><span class="istickedoff">Nothing -&gt;</span>
 <span class="lineno">  230 </span><span class="spaces">            </span><span class="istickedoff">throwE errorCondition</span>
 <span class="lineno">  231 </span><span class="spaces">  </span><span class="istickedoff">where</span>
