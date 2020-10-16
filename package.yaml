@@ -23,6 +23,15 @@ flags:
     default: False
     manual: True
 
+benchmarks:
+  distribution:
+      main: Main.hs
+      source-dirs: src/bench
+      dependencies:
+        - cardano-coin-selection
+        - containers
+        - quiet
+
 library:
   source-dirs:
   - src/library

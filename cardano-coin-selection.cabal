@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.2.
+-- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 955257d9cc818ae774b8798f360815648a42e3808e53b8363c5195d1864c716a
+-- hash: 27aa452399d63d02c70a6d30ec4a170afeccfad2a9a0aa116c00aa38c23a13b0
 
 name:           cardano-coin-selection
 version:        1.0.1
@@ -100,4 +100,19 @@ test-suite unit
     , vector
   if flag(release)
     ghc-options: -Werror
+  default-language: Haskell2010
+
+benchmark distribution
+  type: exitcode-stdio-1.0
+  main-is: Main.hs
+  other-modules:
+      CoinDistribution
+      Paths_cardano_coin_selection
+  hs-source-dirs:
+      src/bench
+  build-depends:
+      base >=4.7 && <5
+    , cardano-coin-selection
+    , containers
+    , quiet
   default-language: Haskell2010
