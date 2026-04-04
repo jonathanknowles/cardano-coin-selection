@@ -57,7 +57,6 @@ index-state:
 
 packages:
   lib/address-derivation-discovery
-  lib/balance-tx
   lib/cardano-api-extra
   lib/coin-selection
   lib/crypto-primitives
@@ -170,9 +169,6 @@ cabal-lib-version: 3.6
 -- Enable specific tests in this repo
 
 test-show-details: direct
-
-package cardano-balance-tx
-  tests: True
 
 package cardano-coin-selection
   tests: True
