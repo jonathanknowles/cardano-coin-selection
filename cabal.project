@@ -62,7 +62,6 @@ packages:
   lib/application-extras
   lib/application-tls
   lib/balance-tx
-  lib/benchmarks
   lib/buildkite
   lib/cardano-api-extra
   lib/coin-selection
@@ -259,9 +258,6 @@ package cardano-wallet-ui
   tests: True
 
 package cardano-wallet-application-tls
-  tests: True
-
-package cardano-wallet-benchmarks
   tests: True
 
 package cardano-wallet-secrets
