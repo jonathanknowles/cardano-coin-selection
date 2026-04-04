@@ -89,7 +89,6 @@ packages:
   lib/unit
   lib/wai-middleware-logging
   lib/wallet
-  lib/wallet-benchmarks
   lib/cardano-wallet-read
 
 --------------------------------------------------------------------------------
@@ -263,9 +262,6 @@ package cardano-wallet-application-tls
   tests: True
 
 package cardano-wallet-benchmarks
-  tests: True
-
-package cardano-wallet-blackbox-benchmarks
   tests: True
 
 package cardano-wallet-secrets
