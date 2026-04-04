@@ -84,7 +84,6 @@ packages:
   lib/test-utils
   lib/text-class
   lib/ui
-  lib/unit
   lib/wai-middleware-logging
   lib/wallet
   lib/cardano-wallet-read
@@ -233,9 +232,6 @@ package cardano-wallet-read
   tests: True
 
 package cardano-wallet-text-class
-  tests: True
-
-package cardano-wallet-unit
   tests: True
 
 package cardano-numeric
