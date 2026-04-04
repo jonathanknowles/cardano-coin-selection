@@ -61,7 +61,6 @@ packages:
   lib/launcher
   lib/numeric
   lib/primitive
-  lib/std-gen-seed
   lib/test-utils
   lib/text-class
   lib/cardano-wallet-read
@@ -186,12 +185,6 @@ package cardano-numeric
   tests: True
 
 package cardano-wallet-test-utils
-  tests: True
-
-package std-gen-seed
-  tests: True
-
-package std-gen-seed
   tests: True
 
 package text-class
