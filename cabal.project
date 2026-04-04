@@ -57,7 +57,6 @@ index-state:
 
 packages:
   lib/address-derivation-discovery
-  lib/api
   lib/application-extras
   lib/application-tls
   lib/balance-tx
@@ -207,9 +206,6 @@ package cardano-coin-selection
   tests: True
 
 package cardano-wallet
-  tests: True
-
-package cardano-wallet-api
   tests: True
 
 package cardano-wallet-launcher
