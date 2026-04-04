@@ -57,7 +57,6 @@ index-state:
 
 packages:
   lib/address-derivation-discovery
-  lib/application-extras
   lib/application-tls
   lib/balance-tx
   lib/buildkite
