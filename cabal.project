@@ -61,7 +61,6 @@ packages:
   lib/cardano-api-extra
   lib/coin-selection
   lib/crypto-primitives
-  lib/faucet
   lib/iohk-monitoring-extra
   lib/launcher
   lib/network-layer
