@@ -63,7 +63,6 @@ packages:
   lib/crypto-primitives
   lib/iohk-monitoring-extra
   lib/launcher
-  lib/network-layer
   lib/numeric
   lib/primitive
   lib/secrets
@@ -182,9 +181,6 @@ package cardano-coin-selection
   tests: True
 
 package cardano-wallet-launcher
-  tests: True
-
-package cardano-wallet-network-layer
   tests: True
 
 package cardano-wallet-primitive
