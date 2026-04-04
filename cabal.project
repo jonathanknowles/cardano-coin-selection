@@ -80,7 +80,6 @@ packages:
   lib/test-utils
   lib/text-class
   lib/wai-middleware-logging
-  lib/wallet
   lib/cardano-wallet-read
 
 --------------------------------------------------------------------------------
@@ -203,9 +202,6 @@ package cardano-balance-tx
   tests: True
 
 package cardano-coin-selection
-  tests: True
-
-package cardano-wallet
   tests: True
 
 package cardano-wallet-launcher
