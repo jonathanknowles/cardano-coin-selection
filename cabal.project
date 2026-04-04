@@ -58,7 +58,6 @@ index-state:
 packages:
   lib/address-derivation-discovery
   lib/api
-  lib/application
   lib/application-extras
   lib/application-tls
   lib/balance-tx
