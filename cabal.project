@@ -56,7 +56,6 @@ index-state:
   , cardano-haskell-packages 2026-01-28T00:00:00Z
 
 packages:
-  lib/address-derivation-discovery
   lib/cardano-api-extra
   lib/coin-selection
   lib/crypto-primitives
