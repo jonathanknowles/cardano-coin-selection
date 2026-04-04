@@ -73,7 +73,6 @@ packages:
   lib/faucet
   lib/iohk-monitoring-extra
   lib/launcher
-  lib/local-cluster
   lib/network-layer
   lib/numeric
   lib/primitive
