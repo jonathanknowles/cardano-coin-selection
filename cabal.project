@@ -68,7 +68,6 @@ packages:
   lib/std-gen-seed
   lib/test-utils
   lib/text-class
-  lib/wai-middleware-logging
   lib/cardano-wallet-read
 
 --------------------------------------------------------------------------------
@@ -197,9 +196,6 @@ package cardano-wallet-test-utils
   tests: True
 
 package std-gen-seed
-  tests: True
-
-package wai-middleware-logging
   tests: True
 
 package cardano-wallet-secrets
