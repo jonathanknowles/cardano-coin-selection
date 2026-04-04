@@ -80,7 +80,6 @@ packages:
   lib/temporary-extra
   lib/test-utils
   lib/text-class
-  lib/ui
   lib/wai-middleware-logging
   lib/wallet
   lib/cardano-wallet-read
@@ -238,9 +237,6 @@ package std-gen-seed
   tests: True
 
 package wai-middleware-logging
-  tests: True
-
-package cardano-wallet-ui
   tests: True
 
 package cardano-wallet-application-tls
