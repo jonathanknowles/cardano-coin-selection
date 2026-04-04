@@ -61,7 +61,6 @@ packages:
   lib/cardano-api-extra
   lib/coin-selection
   lib/crypto-primitives
-  lib/delta-table
   lib/faucet
   lib/iohk-monitoring-extra
   lib/launcher
@@ -176,9 +175,6 @@ cabal-lib-version: 3.6
 -- Enable specific tests in this repo
 
 test-show-details: direct
-
-package delta-table
-  tests: True
 
 package cardano-balance-tx
   tests: True
