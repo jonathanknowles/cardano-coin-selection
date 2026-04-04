@@ -62,7 +62,6 @@ packages:
   lib/coin-selection
   lib/crypto-primitives
   lib/delta-table
-  lib/delta-types
   lib/faucet
   lib/iohk-monitoring-extra
   lib/launcher
@@ -177,9 +176,6 @@ cabal-lib-version: 3.6
 -- Enable specific tests in this repo
 
 test-show-details: direct
-
-package delta-types
-  tests: True
 
 package delta-table
   tests: True
