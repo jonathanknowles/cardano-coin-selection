@@ -67,7 +67,6 @@ packages:
   lib/primitive
   lib/secrets
   lib/std-gen-seed
-  lib/temporary-extra
   lib/test-utils
   lib/text-class
   lib/wai-middleware-logging
