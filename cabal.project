@@ -58,7 +58,6 @@ index-state:
 packages:
   lib/coin-selection
   lib/crypto-primitives
-  lib/launcher
   lib/numeric
   lib/primitive
   lib/test-utils
