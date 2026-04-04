@@ -61,7 +61,6 @@ packages:
   lib/cardano-api-extra
   lib/coin-selection
   lib/crypto-primitives
-  lib/delta-chain
   lib/delta-store
   lib/delta-table
   lib/delta-types
@@ -179,9 +178,6 @@ cabal-lib-version: 3.6
 -- Enable specific tests in this repo
 
 test-show-details: direct
-
-package delta-chain
-  tests: True
 
 package delta-store
   tests: True
