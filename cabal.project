@@ -63,7 +63,6 @@ packages:
   lib/primitive
   lib/test-utils
   lib/text-class
-  lib/cardano-wallet-read
 
 --------------------------------------------------------------------------------
 -- BEGIN OpenAPI
@@ -96,7 +95,6 @@ allow-newer:
   , katip:Win32
   , ekg-wai:time
   , plutus-core:cardano-crypto
-  , cardano-wallet-read:cardano-crypto
   , cardano-ledger-byron-test:cardano-ledger-byron
   , strict-stm:io-classes
   , cardano-cli:cardano-api
@@ -173,9 +171,6 @@ package cardano-wallet-launcher
   tests: True
 
 package cardano-wallet-primitive
-  tests: True
-
-package cardano-wallet-read
   tests: True
 
 package cardano-wallet-text-class
