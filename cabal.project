@@ -61,7 +61,6 @@ packages:
   lib/launcher
   lib/numeric
   lib/primitive
-  lib/secrets
   lib/std-gen-seed
   lib/test-utils
   lib/text-class
@@ -190,9 +189,6 @@ package cardano-wallet-test-utils
   tests: True
 
 package std-gen-seed
-  tests: True
-
-package cardano-wallet-secrets
   tests: True
 
 package std-gen-seed
