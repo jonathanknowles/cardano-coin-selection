@@ -57,7 +57,6 @@ index-state:
 
 packages:
   lib/address-derivation-discovery
-  lib/application-tls
   lib/balance-tx
   lib/buildkite
   lib/cardano-api-extra
@@ -228,9 +227,6 @@ package std-gen-seed
   tests: True
 
 package wai-middleware-logging
-  tests: True
-
-package cardano-wallet-application-tls
   tests: True
 
 package cardano-wallet-secrets
