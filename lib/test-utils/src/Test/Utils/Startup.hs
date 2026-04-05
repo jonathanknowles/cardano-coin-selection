@@ -1,6 +1,5 @@
 module Test.Utils.Startup
     ( withLineBuffering
-    , withNoBuffering
     ) where
 
 import Prelude
@@ -24,9 +23,8 @@ import UnliftIO.IO
     , stdout
     )
 
-withLineBuffering, withNoBuffering :: MonadUnliftIO m => m a -> m a
+withLineBuffering :: MonadUnliftIO m => m a -> m a
 withLineBuffering = withBuffering LineBuffering
-withNoBuffering = withBuffering NoBuffering
 
 withBuffering :: MonadUnliftIO m => BufferMode -> m a -> m a
 withBuffering mode = bracket before after . const

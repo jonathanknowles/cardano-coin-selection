@@ -39,7 +39,6 @@ library
     , hspec
     , hspec-core
     , hspec-golden-aeson
-    , http-api-data
     , int-cast
     , lattices
     , monoid-subclasses

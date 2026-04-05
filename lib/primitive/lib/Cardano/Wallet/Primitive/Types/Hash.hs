@@ -19,7 +19,6 @@ module Cardano.Wallet.Primitive.Types.Hash
     ( Hash (..)
     , hashFromText
     , mockHash
-    , mockHashRewardAccount
     ) where
 
 import Prelude
@@ -31,8 +30,7 @@ import Control.DeepSeq
     ( NFData (..)
     )
 import Cryptography.Hash.Blake
-    ( Blake2b_224
-    , Blake2b_256
+    ( Blake2b_256
     )
 import Cryptography.Hash.Core
     ( hash
@@ -145,10 +143,3 @@ mockHash = Hash . blake2b256 . B8.pack . show
 
 blake2b256 :: ByteString -> ByteString
 blake2b256 = BA.convert . hash @_ @Blake2b_256
-
--- | Construct a hash that is good enough for testing (28 byte length).
-mockHashRewardAccount :: Show a => a -> Hash "RewardAccount"
-mockHashRewardAccount = Hash . blake2b224 . B8.pack . show
-
-blake2b224 :: ByteString -> ByteString
-blake2b224 = BA.convert . hash @_ @Blake2b_224

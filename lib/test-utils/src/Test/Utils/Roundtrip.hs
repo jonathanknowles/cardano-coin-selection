@@ -3,7 +3,6 @@
 
 module Test.Utils.Roundtrip
     ( jsonRoundtripAndGolden
-    , httpApiDataRoundtrip
     ) where
 
 import Prelude
@@ -23,9 +22,6 @@ import Data.Proxy
     )
 import Data.Typeable
     ( Typeable
-    , splitTyConApp
-    , tyConName
-    , typeRep
     )
 import System.Environment
     ( lookupEnv
@@ -53,20 +49,13 @@ import Test.Aeson.Internal.Utils
     )
 import Test.Hspec
     ( Spec
-    , it
     , runIO
-    , shouldBe
     )
 import Test.QuickCheck
     ( Arbitrary (..)
-    , property
     )
 import Text.Read
     ( readMaybe
-    )
-import Web.HttpApiData
-    ( FromHttpApiData (..)
-    , ToHttpApiData (..)
     )
 
 -- Golden tests files are generated automatically on first run. On later runs
@@ -133,31 +122,3 @@ jsonRoundtripAndGolden dir proxy = do
         -- new additions to types and their associated generators.
         , randomMismatchOption = RandomMismatchError
         }
-
--- Perform roundtrip tests for FromHttpApiData & ToHttpApiData instances
-httpApiDataRoundtrip
-    :: forall a.
-        ( Arbitrary a
-        , FromHttpApiData a
-        , ToHttpApiData a
-        , Typeable a
-        , Eq a
-        , Show a
-        )
-    => Proxy a
-    -> Spec
-httpApiDataRoundtrip proxy =
-    it ("URL encoding of " <> cons (typeRep proxy)) $ property $ \(x :: a) -> do
-        let bytes = toUrlPiece x
-        let x' = parseUrlPiece bytes
-        x' `shouldBe` Right x
-  where
-    cons rep =
-        let
-            (c, args) = splitTyConApp rep
-        in
-            case args of
-                [] ->
-                    tyConName c
-                xs ->
-                    "(" <> tyConName c <> " " <> unwords (cons <$> xs) <> ")"
