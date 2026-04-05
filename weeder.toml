@@ -1,0 +1,12 @@
+roots = [
+  # All library and test spec modules of cardano-coin-selection:
+  "^Cardano\\.CoinSelection",
+  # Test and benchmark Main modules:
+  "^Main\\.",
+  # Spec and SpecHook from hspec-discover:
+  "^Spec",
+  # Cabal-generated Paths_ modules:
+  "^Paths_",
+]
+
+type-class-roots = true
