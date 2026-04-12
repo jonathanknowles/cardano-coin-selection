@@ -38,8 +38,7 @@ library
   import:          language, opts-lib
   hs-source-dirs:  lib
   build-depends:
-    , aeson
-    , base
+      base
     , bytestring
     , cardano-numeric
     , cardano-wallet-test-utils
@@ -90,14 +89,12 @@ test-suite test
   hs-source-dirs:     test/data test/spec
   main-is:            run-test-suite.hs
   build-depends:
-    , aeson
-    , base
+      base
     , bytestring
     , cardano-numeric
     , cardano-wallet-primitive
     , cardano-wallet-test-utils
     , containers
-    , filepath
     , fmt
     , hspec
     , hspec-core

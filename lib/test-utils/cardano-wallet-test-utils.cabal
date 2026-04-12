@@ -28,8 +28,7 @@ library
     ghc-options: -Werror
 
   build-depends:
-      aeson
-    , base
+      base
     , containers
     , file-embed
     , filepath
@@ -38,7 +37,6 @@ library
     , generics-sop
     , hspec
     , hspec-core
-    , hspec-golden-aeson
     , int-cast
     , lattices
     , monoid-subclasses
@@ -62,7 +60,6 @@ library
     Test.Utils.Paths
     Test.Utils.Pretty
     Test.Utils.Resource
-    Test.Utils.Roundtrip
     Test.Utils.Startup
 
 test-suite unit

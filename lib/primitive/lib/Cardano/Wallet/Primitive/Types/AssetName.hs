@@ -17,13 +17,6 @@ import Prelude
 import Control.DeepSeq
     ( NFData
     )
-import Control.Monad
-    ( (>=>)
-    )
-import Data.Aeson
-    ( FromJSON (..)
-    , ToJSON (..)
-    )
 import Data.Bifunctor
     ( first
     )
@@ -94,12 +87,6 @@ instance NFData AssetName
 
 instance Buildable AssetName where
     build = build . toText
-
-instance FromJSON AssetName where
-    parseJSON = parseJSON >=> either (fail . show) pure . fromText
-
-instance ToJSON AssetName where
-    toJSON = toJSON . toText
 
 instance ToText AssetName where
     toText = T.decodeLatin1 . convertToBase Base16 . unAssetName

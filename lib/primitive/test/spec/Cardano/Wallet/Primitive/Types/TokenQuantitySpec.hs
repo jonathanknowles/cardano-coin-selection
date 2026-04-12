@@ -1,7 +1,4 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -20,10 +17,6 @@ import Cardano.Wallet.Primitive.Types.TokenQuantity.Gen
     , genTokenQuantityPartition
     , shrinkTokenQuantityFullRange
     )
-import Data.Aeson
-    ( FromJSON (..)
-    , ToJSON (..)
-    )
 import Data.Function
     ( (&)
     )
@@ -35,12 +28,6 @@ import Data.Proxy
     )
 import Data.Text.Class
     ( ToText (..)
-    )
-import Data.Typeable
-    ( Typeable
-    )
-import System.FilePath
-    ( (</>)
     )
 import Test.Hspec
     ( Spec
@@ -78,16 +65,12 @@ import Test.Text.Roundtrip
 import Test.Utils.Laws
     ( testLawsMany
     )
-import Test.Utils.Paths
-    ( getTestData
-    )
 
 import qualified Cardano.Wallet.Primitive.Types.TokenQuantity as TokenQuantity
 import qualified Data.Char as Char
 import qualified Data.Foldable as F
 import qualified Data.Text as T
 import qualified Test.QuickCheck as QC
-import qualified Test.Utils.Roundtrip as JsonRoundtrip
 
 spec :: Spec
 spec =
@@ -134,11 +117,6 @@ spec =
             prop_genTokenQuantityPartition_length & property
         it "prop_genTokenQuantityPartition_nonPositive" $
             prop_genTokenQuantityPartition_nonPositive & property
-
-    describe "JSON serialization" $ do
-
-        describe "Roundtrip tests" $ do
-            testJson $ Proxy @TokenQuantity
 
     describe "Text serialization" $ do
 
@@ -217,18 +195,6 @@ prop_genTokenQuantityPartition_nonPositive
     :: TokenQuantity -> QC.NonPositive (QC.Small Int) -> Property
 prop_genTokenQuantityPartition_nonPositive m (QC.NonPositive (QC.Small i)) =
     forAll (genTokenQuantityPartition m i) (=== pure m)
-
---------------------------------------------------------------------------------
--- JSON serialization
---------------------------------------------------------------------------------
-
-testJson
-    :: (Arbitrary a, ToJSON a, FromJSON a, Typeable a) => Proxy a -> Spec
-testJson = JsonRoundtrip.jsonRoundtripAndGolden testJsonDataDirectory
-
-testJsonDataDirectory :: FilePath
-testJsonDataDirectory =
-    ($(getTestData) </> "Cardano" </> "Wallet" </> "Primitive" </> "Types")
 
 --------------------------------------------------------------------------------
 -- Text serialization

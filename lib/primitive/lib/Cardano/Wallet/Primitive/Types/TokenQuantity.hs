@@ -44,10 +44,6 @@ import Cardano.Numeric.Util
 import Control.DeepSeq
     ( NFData (..)
     )
-import Data.Aeson
-    ( FromJSON (..)
-    , ToJSON (..)
-    )
 import Data.Data
     ( Data
     )
@@ -135,11 +131,6 @@ instance ToText TokenQuantity where
 
 instance FromText TokenQuantity where
     fromText = fmap (TokenQuantity . fromIntegral @Integer) . fromText
-
-instance FromJSON TokenQuantity where
-    parseJSON = fmap TokenQuantity . parseJSON
-instance ToJSON TokenQuantity where
-    toJSON = toJSON . unTokenQuantity
 
 --------------------------------------------------------------------------------
 -- Values
