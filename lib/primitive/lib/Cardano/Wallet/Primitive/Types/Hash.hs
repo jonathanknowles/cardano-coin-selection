@@ -17,15 +17,11 @@
 --
 module Cardano.Wallet.Primitive.Types.Hash
     ( Hash (..)
-    , hashFromText
     , mockHash
     ) where
 
 import Prelude
 
-import Cardano.Wallet.Util
-    ( mapFirst
-    )
 import Control.DeepSeq
     ( NFData (..)
     )
@@ -38,11 +34,6 @@ import Cryptography.Hash.Core
 import Data.ByteArray
     ( ByteArrayAccess
     )
-import Data.ByteArray.Encoding
-    ( Base (Base16)
-    , convertFromBase
-    , convertToBase
-    )
 import Data.ByteString
     ( ByteString
     )
@@ -52,24 +43,11 @@ import Data.Data
 import Data.Hashable
     ( Hashable
     )
-import Data.Proxy
-    ( Proxy (..)
-    )
-import Data.Text
-    ( Text
-    )
-import Data.Text.Class
-    ( FromText (..)
-    , TextDecodingError (..)
-    , ToText (..)
-    )
 import GHC.Generics
     ( Generic
     )
 import GHC.TypeLits
-    ( KnownSymbol
-    , Symbol
-    , symbolVal
+    ( Symbol
     )
 import NoThunks.Class
     ( NoThunks (..)
@@ -79,10 +57,7 @@ import Quiet
     )
 
 import qualified Data.ByteArray as BA
-import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as B8
-import qualified Data.Char as C
-import qualified Data.Text.Encoding as T
 
 newtype Hash (tag :: Symbol) = Hash { getHash :: ByteString }
     deriving stock (Data, Generic, Eq, Ord)
@@ -91,40 +66,6 @@ newtype Hash (tag :: Symbol) = Hash { getHash :: ByteString }
     deriving anyclass (NFData, Hashable)
 
 instance NoThunks (Hash tag)
-
-instance ToText (Hash tag) where
-    toText = T.decodeUtf8 . convertToBase Base16 . getHash
-
-instance FromText (Hash "Tx")              where fromText = hashFromText 32
-instance FromText (Hash "Account")         where fromText = hashFromText 32
-instance FromText (Hash "Genesis")         where fromText = hashFromText 32
-instance FromText (Hash "Block")           where fromText = hashFromText 32
-instance FromText (Hash "BlockHeader")     where fromText = hashFromText 32
-instance FromText (Hash "RewardAccount")   where fromText = hashFromText 28
-instance FromText (Hash "TokenPolicy")     where fromText = hashFromText 28 -- Script Hash
-instance FromText (Hash "Datum")           where fromText = hashFromText 32
-instance FromText (Hash "VerificationKey") where fromText = hashFromText 28
-instance FromText (Hash "ScriptIntegrity") where fromText = hashFromText 32
-
-hashFromText
-    :: forall t. (KnownSymbol t)
-    => Int
-        -- ^ Expected decoded hash length
-    -> Text
-    -> Either TextDecodingError (Hash t)
-hashFromText len text = case decoded of
-    Right bytes | BS.length bytes == len ->
-        Right $ Hash bytes
-    _ ->
-        Left $ TextDecodingError $ unwords
-            [ "Invalid"
-            , mapFirst C.toLower $ symbolVal $ Proxy @t
-            , "hash: expecting a hex-encoded value that is"
-            , show len
-            , "bytes in length."
-            ]
-  where
-    decoded = convertFromBase Base16 $ T.encodeUtf8 text
 
 -- | Constructs a hash that is good enough for testing.
 --

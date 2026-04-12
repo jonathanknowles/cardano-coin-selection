@@ -22,10 +22,6 @@ import Data.Data
 import Data.Hashable
     ( Hashable
     )
-import Data.Text.Class
-    ( FromText (..)
-    , ToText (..)
-    )
 import GHC.Generics
     ( Generic
     )
@@ -43,9 +39,3 @@ newtype TokenPolicyId =
     deriving anyclass Hashable
 
 instance NFData TokenPolicyId
-
-instance ToText TokenPolicyId where
-    toText = toText . unTokenPolicyId
-
-instance FromText TokenPolicyId where
-    fromText = fmap UnsafeTokenPolicyId . fromText

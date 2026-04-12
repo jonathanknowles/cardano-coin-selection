@@ -21,11 +21,8 @@ import Cardano.Wallet.Primitive.Types.Hash
 import Cardano.Wallet.Primitive.Types.TokenPolicyId
     ( TokenPolicyId (..)
     )
-import Data.Either
-    ( fromRight
-    )
-import Data.Text.Class
-    ( FromText (..)
+import Data.Word
+    ( Word8
     )
 import Test.QuickCheck
     ( Gen
@@ -35,7 +32,7 @@ import Test.QuickCheck
     )
 
 import qualified Data.ByteString as BS
-import qualified Data.Text as T
+
 
 --------------------------------------------------------------------------------
 -- Token policy identifiers chosen from a range that depends on the size
@@ -65,24 +62,12 @@ genTokenPolicyIdLargeRange = UnsafeTokenPolicyId . Hash . BS.pack <$> vector 28
 --------------------------------------------------------------------------------
 
 testTokenPolicyIds :: [TokenPolicyId]
-testTokenPolicyIds = mkTokenPolicyId <$> mkTokenPolicyIdValidChars
+testTokenPolicyIds = mkTokenPolicyId <$> [0 .. 15]
 
--- The set of characters that can be passed to the 'mkTokenPolicyId' function.
---
-mkTokenPolicyIdValidChars :: [Char]
-mkTokenPolicyIdValidChars = ['0' .. '9'] <> ['A' .. 'F']
+mkTokenPolicyId :: Word8 -> TokenPolicyId
+mkTokenPolicyId w =
+    UnsafeTokenPolicyId . Hash . BS.pack $
+        replicate tokenPolicyIdLengthBytes (fromIntegral w)
 
--- The input must be a character in the range [0-9] or [A-F].
---
-mkTokenPolicyId :: Char -> TokenPolicyId
-mkTokenPolicyId c
-    = fromRight reportError
-    $ fromText
-    $ T.pack
-    $ replicate tokenPolicyIdHexStringLength c
-  where
-    reportError = error $
-        "Unable to generate token policy id from character: " <> show c
-
-tokenPolicyIdHexStringLength :: Int
-tokenPolicyIdHexStringLength = 56
+tokenPolicyIdLengthBytes :: Int
+tokenPolicyIdLengthBytes = 28

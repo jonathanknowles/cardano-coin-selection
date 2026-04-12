@@ -2,7 +2,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE ExplicitForAll #-}
-{-# LANGUAGE TypeApplications #-}
 
 -- |
 -- Copyright: © 2018-2020 IOHK
@@ -92,10 +91,6 @@ import Data.Monoid.Null
 import Data.Semigroup.Commutative
     ( Commutative
     )
-import Data.Text.Class
-    ( FromText (..)
-    , ToText (..)
-    )
 import Data.Word
     ( Word64
     )
@@ -111,8 +106,6 @@ import Numeric.Natural
 import Quiet
     ( Quiet (..)
     )
-
-import qualified Data.Text as T
 
 -- | A 'Coin' represents a quantity of lovelace.
 --
@@ -130,12 +123,6 @@ newtype Coin = Coin
     deriving (LeftReductive, RightReductive, Reductive) via Sum Natural
     deriving (LeftGCDMonoid, RightGCDMonoid, GCDMonoid) via Sum Natural
     deriving (OverlappingGCDMonoid, Monus) via Sum Natural
-
-instance ToText Coin where
-    toText (Coin c) = T.pack $ show c
-
-instance FromText Coin where
-    fromText = fmap Coin . fromText @Natural
 
 instance NFData Coin
 instance Hashable Coin

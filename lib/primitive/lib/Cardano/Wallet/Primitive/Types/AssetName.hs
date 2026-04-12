@@ -17,14 +17,6 @@ import Prelude
 import Control.DeepSeq
     ( NFData
     )
-import Data.Bifunctor
-    ( first
-    )
-import Data.ByteArray.Encoding
-    ( Base (Base16)
-    , convertFromBase
-    , convertToBase
-    )
 import Data.ByteString
     ( ByteString
     )
@@ -34,11 +26,6 @@ import Data.Data
 import Data.Hashable
     ( Hashable
     )
-import Data.Text.Class
-    ( FromText (..)
-    , TextDecodingError (..)
-    , ToText (..)
-    )
 import GHC.Generics
     ( Generic
     )
@@ -47,7 +34,6 @@ import Quiet
     )
 
 import qualified Data.ByteString as BS
-import qualified Data.Text.Encoding as T
 
 -- | Asset names, defined by the monetary policy script.
 newtype AssetName =
@@ -81,12 +67,3 @@ maxLength :: Int
 maxLength = 32
 
 instance NFData AssetName
-
-instance ToText AssetName where
-    toText = T.decodeLatin1 . convertToBase Base16 . unAssetName
-
-instance FromText AssetName where
-    fromText = first TextDecodingError
-        . either (Left . ("AssetName is not hex-encoded: " ++)) fromByteString
-        . convertFromBase Base16
-        . T.encodeUtf8

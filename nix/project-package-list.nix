@@ -4,5 +4,4 @@
   "cardano-numeric"
   "cardano-wallet-primitive"
   "cardano-wallet-test-utils"
-  "text-class"
 ]

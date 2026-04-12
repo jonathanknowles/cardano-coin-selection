@@ -58,8 +58,6 @@ library
     , quiet
     , random
     , safe
-    , text
-    , text-class
 
   exposed-modules:
     Cardano.Wallet.Primitive.Types.AssetId
@@ -89,7 +87,6 @@ test-suite test
   main-is:            run-test-suite.hs
   build-depends:
       base
-    , bytestring
     , cardano-numeric
     , cardano-wallet-primitive
     , cardano-wallet-test-utils
@@ -100,14 +97,11 @@ test-suite test
     , quickcheck-classes
     , quickcheck-instances
     , quickcheck-monoid-subclasses
-    , text
-    , text-class
     , with-utf8
 
   build-tool-depends: hspec-discover:hspec-discover
   other-modules:
     Cardano.Wallet.Primitive.Types.CoinSpec
-    Cardano.Wallet.Primitive.Types.HashSpec
     Cardano.Wallet.Primitive.Types.TokenBundleSpec
     Cardano.Wallet.Primitive.Types.TokenMapSpec
     Cardano.Wallet.Primitive.Types.TokenQuantitySpec

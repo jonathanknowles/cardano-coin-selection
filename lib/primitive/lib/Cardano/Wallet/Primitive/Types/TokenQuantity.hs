@@ -79,10 +79,6 @@ import Data.Monoid.Null
 import Data.Semigroup.Commutative
     ( Commutative
     )
-import Data.Text.Class
-    ( FromText (..)
-    , ToText (..)
-    )
 import GHC.Generics
     ( Generic
     )
@@ -115,16 +111,6 @@ newtype TokenQuantity = TokenQuantity
     deriving (LeftReductive, RightReductive, Reductive) via Sum Natural
     deriving (LeftGCDMonoid, RightGCDMonoid, GCDMonoid) via Sum Natural
     deriving (OverlappingGCDMonoid, Monus) via Sum Natural
-
---------------------------------------------------------------------------------
--- Instances
---------------------------------------------------------------------------------
-
-instance ToText TokenQuantity where
-    toText = toText . unTokenQuantity
-
-instance FromText TokenQuantity where
-    fromText = fmap (TokenQuantity . fromIntegral @Integer) . fromText
 
 --------------------------------------------------------------------------------
 -- Values

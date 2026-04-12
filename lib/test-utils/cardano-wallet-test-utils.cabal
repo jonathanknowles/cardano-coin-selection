@@ -46,7 +46,6 @@ library
     , quickcheck-classes
     , template-haskell
     , text
-    , text-class
     , unliftio
     , unliftio-core
 

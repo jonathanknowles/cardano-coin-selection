@@ -10,7 +10,6 @@ packages:
   lib/numeric
   lib/primitive
   lib/test-utils
-  lib/text-class
 
 -- Using RDRAND instead of /dev/urandom as an entropy source for key
 -- generation is dubious. Set the flag so we use /dev/urandom by default.
