@@ -44,7 +44,6 @@ library
     , cardano-wallet-test-utils
     , commutative-semigroups
     , containers
-    , crypto-primitives
     , deepseq
     , hashable
     , int-cast
