@@ -74,8 +74,6 @@ library
     Cardano.Wallet.Primitive.Types.TokenPolicyId.Gen
     Cardano.Wallet.Primitive.Types.TokenQuantity
     Cardano.Wallet.Primitive.Types.TokenQuantity.Gen
-    Cardano.Wallet.Unsafe
-    Cardano.Wallet.Util
     Control.Monad.Random.NonRandom
 
 test-suite test
