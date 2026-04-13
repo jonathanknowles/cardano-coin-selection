@@ -1,27 +1,5 @@
--- repeating the index-state for hackage to work around hackage.nix parsing limitation
-index-state: 2026-01-29T00:00:00Z
-
-index-state:
-  , hackage.haskell.org 2026-01-29T00:00:00Z
-
 packages:
   lib/coin-selection
   lib/numeric
   lib/primitive
   lib/test-utils
-
--- Using RDRAND instead of /dev/urandom as an entropy source for key
--- generation is dubious. Set the flag so we use /dev/urandom by default.
-package cryptonite
-  flags: -support_rdrand
-
--- By default, we write IDE information for all packages.
-program-options
-  ghc-options: -fwrite-ide-info
-
-program-options
-  ghc-options: -Wwarn=unused-packages
-
-cabal-lib-version: 3.6
-
-test-show-details: direct
