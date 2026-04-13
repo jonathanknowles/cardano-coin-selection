@@ -1,12 +1,10 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
 
 -- |
 -- Copyright: © 2020-2021 IOHK
@@ -24,9 +22,6 @@ module Cardano.Wallet.Unsafe
 
 import Prelude
 
-import Cardano.Wallet.Util
-    ( internalError
-    )
 import Data.ByteArray
     ( ByteArray
     )
@@ -37,17 +32,13 @@ import Data.ByteArray.Encoding
 import Data.ByteString
     ( ByteString
     )
-import Fmt
-    ( Buildable
-    , build
-    )
 import GHC.Stack
     ( HasCallStack
     )
 
 -- | Take the right side of an 'Either' value. Crash badly if it was a left.
-unsafeRight :: (Buildable e, HasCallStack) => Either e a -> a
-unsafeRight = either (internalError . build) id
+unsafeRight :: (HasCallStack, Show e) => Either e a -> a
+unsafeRight = either (error . show) id
 
 -- | Decode an hex-encoded 'ByteString' into raw bytes, or fail.
 unsafeFromHex :: forall b. (HasCallStack, ByteArray b) => ByteString -> b
