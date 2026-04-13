@@ -39,9 +39,6 @@ import Data.Text.Class
     , TextDecodingError (..)
     , ToText (..)
     )
-import Fmt
-    ( Buildable (..)
-    )
 import GHC.Generics
     ( Generic
     )
@@ -84,9 +81,6 @@ maxLength :: Int
 maxLength = 32
 
 instance NFData AssetName
-
-instance Buildable AssetName where
-    build = build . toText
 
 instance ToText AssetName where
     toText = T.decodeLatin1 . convertToBase Base16 . unAssetName

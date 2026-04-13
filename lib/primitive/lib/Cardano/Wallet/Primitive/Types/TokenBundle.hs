@@ -4,8 +4,6 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 -- | Provides the 'TokenBundle' type, which combines a 'Coin' (lovelace) value
@@ -54,10 +52,6 @@ module Cardano.Wallet.Primitive.Types.TokenBundle
     -- * Ordering
     , Lexicographic (..)
 
-    -- * Serialization
-    , Flat (..)
-    , Nested (..)
-
     -- * Queries
     , getAssets
 
@@ -88,9 +82,7 @@ import Cardano.Wallet.Primitive.Types.Coin
     ( Coin (..)
     )
 import Cardano.Wallet.Primitive.Types.TokenMap
-    ( Flat (..)
-    , Lexicographic (..)
-    , Nested (..)
+    ( Lexicographic (..)
     , TokenMap
     )
 import Cardano.Wallet.Primitive.Types.TokenPolicyId
@@ -101,9 +93,6 @@ import Cardano.Wallet.Primitive.Types.TokenQuantity
     )
 import Control.DeepSeq
     ( NFData
-    )
-import Data.Bifunctor
-    ( first
     )
 import Data.Hashable
     ( Hashable
@@ -137,11 +126,6 @@ import Data.Semigroup.Commutative
     )
 import Data.Set
     ( Set
-    )
-import Fmt
-    ( Buildable (..)
-    , Builder
-    , blockMapF
     )
 import GHC.Generics
     ( Generic
@@ -240,31 +224,6 @@ instance Ord (Lexicographic TokenBundle) where
     compare = comparing projection
       where
         projection (Lexicographic (TokenBundle c m)) = (c, Lexicographic m)
-
---------------------------------------------------------------------------------
--- Text serialization
---------------------------------------------------------------------------------
-
-instance Buildable (Flat TokenBundle) where
-    build = buildBundle Flat . getFlat
-
-instance Buildable (Nested TokenBundle) where
-    build = buildBundle Nested . getNested
-
-buildBundle
-    :: Buildable (style TokenMap)
-    => (TokenMap -> style TokenMap)
-    -> TokenBundle
-    -> Builder
-buildBundle style TokenBundle {coin, tokens} = buildMap
-    [ ("coin"
-      , build coin)
-    , ("tokens"
-      , build $ style tokens)
-    ]
-
-buildMap :: [(String, Builder)] -> Builder
-buildMap = blockMapF . fmap (first $ id @String)
 
 --------------------------------------------------------------------------------
 -- Construction

@@ -26,9 +26,6 @@ import Data.Text.Class
     ( FromText (..)
     , ToText (..)
     )
-import Fmt
-    ( Buildable (..)
-    )
 import GHC.Generics
     ( Generic
     )
@@ -46,9 +43,6 @@ newtype TokenPolicyId =
     deriving anyclass Hashable
 
 instance NFData TokenPolicyId
-
-instance Buildable TokenPolicyId where
-    build = build . toText . unTokenPolicyId
 
 instance ToText TokenPolicyId where
     toText = toText . unTokenPolicyId

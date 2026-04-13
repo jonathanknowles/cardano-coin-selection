@@ -66,10 +66,6 @@ module Cardano.Wallet.Primitive.Types.TokenMap
     -- * Ordering
     , Lexicographic (..)
 
-    -- * Serialization
-    , Flat (..)
-    , Nested (..)
-
     -- * Queries
     , getAssets
 
@@ -157,12 +153,6 @@ import Data.Semigroup.Commutative
     )
 import Data.Set
     ( Set
-    )
-import Fmt
-    ( Buildable (..)
-    , Builder
-    , blockListF'
-    , blockMapF
     )
 import GHC.Generics
     ( Generic
@@ -283,66 +273,6 @@ newtype Lexicographic a = Lexicographic {unLexicographic :: a}
 
 instance Ord (Lexicographic TokenMap) where
     compare = comparing (toNestedList . unLexicographic)
-
---------------------------------------------------------------------------------
--- Serialization
---------------------------------------------------------------------------------
-
--- | When used with the 'Buildable' instance, provides a flat serialization
--- style, where token quantities are paired with their asset identifiers.
---
-newtype Flat a = Flat { getFlat :: a }
-    deriving stock (Eq, Generic, Ord)
-    deriving Show via (Quiet (Flat a))
-
--- | When used with the 'Buildable' instance, provides a nested serialization
--- style, where token quantities are grouped by policy identifier.
---
-newtype Nested a = Nested { getNested :: a }
-    deriving stock (Eq, Generic, Ord)
-    deriving Show via (Quiet (Nested a))
-
---------------------------------------------------------------------------------
--- Text serialization
---------------------------------------------------------------------------------
-
-instance Buildable (Flat TokenMap) where
-    build = buildTokenMap . getFlat
-      where
-        buildTokenMap =
-            buildList buildAssetQuantity . toFlatList
-        buildAssetQuantity (AssetId policyId assetName, quantity) = buildMap
-            [ ("policyId",
-                build policyId)
-            , ("assetName",
-                build assetName)
-            , ("quantity",
-                build quantity)
-            ]
-
-instance Buildable (Nested TokenMap) where
-    build = buildTokenMap . unTokenMap . getNested
-      where
-        buildTokenMap =
-            buildList buildPolicy . MonoidMap.toList
-        buildPolicy (policyId, assetMap) = buildMap
-            [ ("policyId",
-                build policyId)
-            , ("tokens",
-                buildList buildTokenQuantity (MonoidMap.toList assetMap))
-            ]
-        buildTokenQuantity (assetName, quantity) = buildMap
-            [ ("assetName",
-                build assetName)
-            , ("quantity",
-                build quantity)
-            ]
-
-buildList :: Foldable f => (a -> Builder) -> f a -> Builder
-buildList = blockListF' "-"
-
-buildMap :: [(String, Builder)] -> Builder
-buildMap = blockMapF . fmap (first $ id @String)
 
 --------------------------------------------------------------------------------
 -- Construction

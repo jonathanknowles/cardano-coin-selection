@@ -148,8 +148,7 @@ import Cardano.Wallet.Primitive.Types.Hash
     ( Hash (..)
     )
 import Cardano.Wallet.Primitive.Types.TokenBundle
-    ( Flat (..)
-    , TokenBundle (..)
+    ( TokenBundle (..)
     )
 import Cardano.Wallet.Primitive.Types.TokenBundle.Gen
     ( genTokenBundleSmallRangePositive
@@ -225,9 +224,6 @@ import Data.Tuple
 import Data.Word
     ( Word64
     , Word8
-    )
-import Fmt
-    ( Buildable (..)
     )
 import Generics.SOP
     ( NP (..)
@@ -311,9 +307,6 @@ import Test.QuickCheck.Quid
     )
 import Test.Utils.Laws
     ( testLawsMany
-    )
-import Test.Utils.Pretty
-    ( Pretty (..)
     )
 
 import qualified Cardano.CoinSelection.Balance as SelectionParams
@@ -4342,16 +4335,11 @@ instance SC.SelectionContext TestSelectionContext where
 
 newtype TestAddress = TestAddress (Hexadecimal Quid)
     deriving Arbitrary via Quid
-    deriving Buildable via (Pretty TestAddress)
     deriving stock (Eq, Ord, Read, Show)
 
 newtype TestUTxO = TestUTxO (Hexadecimal Quid)
     deriving (Arbitrary, CoArbitrary) via Quid
-    deriving Buildable via (Pretty TestUTxO)
     deriving stock (Eq, Ord, Read, Show)
-
-instance Buildable (TestUTxO, TokenBundle) where
-    build (u, b) = build u <> ":" <> build (Flat b)
 
 --------------------------------------------------------------------------------
 -- Arbitrary instances

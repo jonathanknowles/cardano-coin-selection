@@ -83,7 +83,6 @@ test-suite test
     , cardano-wallet-primitive
     , cardano-wallet-test-utils
     , containers
-    , fmt                        >=0.6.3   && <0.7
     , generic-lens
     , generics-sop
     , hspec                      >=2.11.0  && <2.12

@@ -83,9 +83,6 @@ import Data.Text.Class
     ( FromText (..)
     , ToText (..)
     )
-import Fmt
-    ( Buildable (..)
-    )
 import GHC.Generics
     ( Generic
     )
@@ -122,9 +119,6 @@ newtype TokenQuantity = TokenQuantity
 --------------------------------------------------------------------------------
 -- Instances
 --------------------------------------------------------------------------------
-
-instance Buildable TokenQuantity where
-    build = build . toText . unTokenQuantity
 
 instance ToText TokenQuantity where
     toText = toText . unTokenQuantity

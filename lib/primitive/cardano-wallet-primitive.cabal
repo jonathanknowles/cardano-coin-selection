@@ -46,7 +46,6 @@ library
     , containers
     , crypto-primitives
     , deepseq
-    , fmt
     , hashable
     , int-cast
     , lattices
@@ -95,14 +94,12 @@ test-suite test
     , cardano-wallet-primitive
     , cardano-wallet-test-utils
     , containers
-    , fmt
     , hspec
     , hspec-core
     , QuickCheck
     , quickcheck-classes
     , quickcheck-instances
     , quickcheck-monoid-subclasses
-    , string-qq
     , text
     , text-class
     , with-utf8

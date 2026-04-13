@@ -99,10 +99,6 @@ import Data.Text.Class
 import Data.Word
     ( Word64
     )
-import Fmt
-    ( Buildable (..)
-    , fixedF
-    )
 import GHC.Generics
     ( Generic
     )
@@ -117,7 +113,6 @@ import Quiet
     )
 
 import qualified Data.Text as T
-import qualified Prelude
 
 -- | A 'Coin' represents a quantity of lovelace.
 --
@@ -144,9 +139,6 @@ instance FromText Coin where
 
 instance NFData Coin
 instance Hashable Coin
-
-instance Buildable Coin where
-    build (Coin c) = fixedF @Double 6 (Prelude.fromIntegral c / 1e6)
 
 --------------------------------------------------------------------------------
 -- Conversions (Safe)

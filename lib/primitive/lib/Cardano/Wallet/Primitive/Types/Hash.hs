@@ -63,10 +63,6 @@ import Data.Text.Class
     , TextDecodingError (..)
     , ToText (..)
     )
-import Fmt
-    ( Buildable (..)
-    , prefixF
-    )
 import GHC.Generics
     ( Generic
     )
@@ -95,12 +91,6 @@ newtype Hash (tag :: Symbol) = Hash { getHash :: ByteString }
     deriving anyclass (NFData, Hashable)
 
 instance NoThunks (Hash tag)
-
-instance Buildable (Hash tag) where
-    build h = mempty
-        <> prefixF 8 builder
-      where
-        builder = build . toText $ h
 
 instance ToText (Hash tag) where
     toText = T.decodeUtf8 . convertToBase Base16 . getHash
