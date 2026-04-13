@@ -16,7 +16,6 @@
 --
 module Cardano.Wallet.Primitive.Types.Hash
     ( Hash (..)
-    , mockHash
     ) where
 
 import Prelude
@@ -34,7 +33,7 @@ import Data.Data
     ( Data
     )
 import Data.Hashable
-    ( Hashable (hash)
+    ( Hashable
     )
 import GHC.Generics
     ( Generic
@@ -49,8 +48,6 @@ import Quiet
     ( Quiet (..)
     )
 
-import qualified Data.ByteString.Char8 as B8
-
 newtype Hash (tag :: Symbol) = Hash { getHash :: ByteString }
     deriving stock (Data, Generic, Eq, Ord)
     deriving newtype (ByteArrayAccess)
@@ -58,8 +55,3 @@ newtype Hash (tag :: Symbol) = Hash { getHash :: ByteString }
     deriving anyclass (NFData, Hashable)
 
 instance NoThunks (Hash tag)
-
--- | Constructs a hash that is good enough for testing.
---
-mockHash :: Hashable a => a -> Hash whatever
-mockHash = Hash . B8.pack . show . hash
