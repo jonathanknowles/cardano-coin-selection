@@ -6,7 +6,6 @@ index-state:
 
 packages:
   lib/coin-selection
-  lib/crypto-primitives
   lib/numeric
   lib/primitive
   lib/test-utils
