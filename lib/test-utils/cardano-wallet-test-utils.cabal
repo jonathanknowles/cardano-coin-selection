@@ -30,36 +30,23 @@ library
   build-depends:
       base
     , containers
-    , file-embed
-    , filepath
     , fmt
     , formatting
     , generics-sop
     , hspec
-    , hspec-core
     , int-cast
     , lattices
-    , monoid-subclasses
-    , optparse-applicative
     , pretty-simple
     , QuickCheck
     , quickcheck-classes
-    , template-haskell
     , text
-    , unliftio
-    , unliftio-core
 
   hs-source-dirs:     src
   exposed-modules:
-    Test.Hspec.Extra
     Test.QuickCheck.Extra
-    Test.Utils.Env
     Test.Utils.Laws
     Test.Utils.Laws.PartialOrd
-    Test.Utils.Paths
     Test.Utils.Pretty
-    Test.Utils.Resource
-    Test.Utils.Startup
 
 test-suite unit
   default-language:   Haskell2010
@@ -77,24 +64,15 @@ test-suite unit
     , cardano-wallet-test-utils
     , containers
     , extra
-    , fmt
     , generic-lens
     , generics-sop
     , hspec
-    , hspec-core
-    , hspec-expectations-lifted
     , lattices
-    , monoid-subclasses
     , QuickCheck
-    , safe
-    , silently
-    , unliftio
-    , unliftio-core
 
   build-tool-depends: hspec-discover:hspec-discover
   type:               exitcode-stdio-1.0
   hs-source-dirs:     test
   main-is:            test-utils-unit-test.hs
   other-modules:
-    Test.Hspec.ExtraSpec
     Test.QuickCheck.ExtraSpec

@@ -2,7 +2,6 @@
 
 module Test.Utils.Pretty
     ( Pretty (..)
-    , (====)
     , pShowBuilder
     ) where
 
@@ -17,8 +16,6 @@ import Formatting.Buildable
     )
 import Test.QuickCheck
     ( Arbitrary (..)
-    , Property
-    , (===)
     )
 import Text.Pretty.Simple
     ( pShow
@@ -43,8 +40,3 @@ instance Show a => Buildable (Pretty a) where
 -- the "Fmt" module.
 pShowBuilder :: Show a => a -> Builder
 pShowBuilder = fromLazyText . pShow
-
--- | Like '===', but prettier.
-infix 4 ====
-(====) :: (Eq a, Show a) => a -> a -> Property
-a ==== b = Pretty a === Pretty b
