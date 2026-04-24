@@ -1,0 +1,378 @@
+cabal-version:  3.0
+name:           cardano-coin-selection
+version:        0.2025.12.15
+synopsis:       Coin selection algorithms for the Cardano blockchain.
+description:    Please see README.md.
+homepage:       https://github.com/cardano-foundation/cardano-wallet
+bug-reports:    https://github.com/cardano-foundation/cardano-wallet/issues
+author:         Cardano Foundation (High Assurance Lab)
+maintainer:     hal@cardanofoundation.org
+copyright:      2018-2022 IOHK, 2023 Cardano Foundation
+license:        Apache-2.0
+license-file:   LICENSE
+category:       Blockchain, Cardano
+build-type:     Simple
+
+common dependency-base
+    build-depends:base                               >= 4.14         && < 5
+common dependency-bytestring
+    build-depends:bytestring                         >= 0.10.6       && < 0.13
+common dependency-commutative-semigroups
+    build-depends:commutative-semigroups
+common dependency-containers
+    build-depends:containers                         >= 0.5          && < 0.8
+common dependency-deepseq
+    build-depends:deepseq                            >= 1.4.4        && < 1.6
+common dependency-exact-combinatorics
+    build-depends:exact-combinatorics                >= 0.2          && < 0.3
+common dependency-extra
+    build-depends:extra
+common dependency-fmt
+    build-depends:fmt
+common dependency-format-numbers
+    build-depends:format-numbers                     >= 0.1.0.1      && < 0.2
+common dependency-formatting
+    build-depends:formatting
+common dependency-generic-lens
+    build-depends:generic-lens                       >= 2.2.2.0      && < 2.3
+common dependency-generics-sop
+    build-depends:generics-sop                       >= 0.5.1.4      && < 0.6
+common dependency-hashable
+    build-depends:hashable
+common dependency-hspec
+    build-depends:hspec                              >= 2.11.0       && < 2.12
+common dependency-hspec-core
+    build-depends:hspec-core
+common dependency-int-cast
+    build-depends:int-cast                           >= 0.2.0.0      && < 0.3
+common dependency-lattices
+    build-depends:lattices                           >= 2.2          && < 2.3
+common dependency-math-functions
+    build-depends:math-functions                     >= 0.3.4.4      && < 0.4
+common dependency-memory
+    build-depends:memory
+common dependency-MonadRandom
+    build-depends:MonadRandom                        >= 0.6          && < 0.7
+common dependency-monoid-subclasses
+    build-depends:monoid-subclasses                  >= 1.2.5.1      && < 1.3
+common dependency-monoidmap
+    build-depends:monoidmap                          >= 0.0.1.6      && < 0.1
+common dependency-nothunks
+    build-depends:nothunks
+common dependency-pretty-simple
+    build-depends:pretty-simple                      >= 4.1.2.0      && < 4.2
+common dependency-QuickCheck
+    build-depends:QuickCheck                         >= 2.14         && < 2.16
+common dependency-quickcheck-classes
+    build-depends:quickcheck-classes                 >= 0.6.5        && < 0.7
+common dependency-quickcheck-instances
+    build-depends:quickcheck-instances
+common dependency-quickcheck-monoid-subclasses
+    build-depends:quickcheck-monoid-subclasses
+common dependency-quickcheck-quid
+    build-depends:quickcheck-quid                    >= 0.0.1.5      && < 0.1
+common dependency-quiet
+    build-depends:quiet
+common dependency-random
+    build-depends:random
+common dependency-safe
+    build-depends:safe                               >= 0.3.19       && < 0.4
+common dependency-tasty-bench
+    build-depends:tasty-bench                        >= 0.4          && < 0.5
+common dependency-text
+    build-depends:text                               >= 1.2          && < 2.2
+common dependency-transformers
+    build-depends:transformers                       >= 0.6.1.0      && < 0.7
+common dependency-with-utf8
+    build-depends:with-utf8                          >= 1.1.0        && < 1.2
+
+source-repository head
+  type:     git
+  location: https://github.com/cardano-foundation/cardano-wallet
+
+flag release
+  description: Enable optimization and `-Werror`
+  default:     False
+  manual:      True
+
+library
+  import:
+    , dependency-base
+    , dependency-containers
+    , dependency-deepseq
+    , dependency-exact-combinatorics
+    , dependency-generic-lens
+    , dependency-generics-sop
+    , dependency-int-cast
+    , dependency-lattices
+    , dependency-math-functions
+    , dependency-MonadRandom
+    , dependency-monoid-subclasses
+    , dependency-monoidmap
+    , dependency-QuickCheck
+    , dependency-transformers
+  build-depends:
+    , cardano-numeric
+    , cardano-wallet-primitive
+    , cardano-wallet-test-utils
+  hs-source-dirs:  lib/coin-selection/lib
+  exposed-modules:
+    Cardano.CoinSelection
+    Cardano.CoinSelection.Balance
+    Cardano.CoinSelection.Balance.Gen
+    Cardano.CoinSelection.Collateral
+    Cardano.CoinSelection.Context
+    Cardano.CoinSelection.Size
+    Cardano.CoinSelection.UTxOIndex
+    Cardano.CoinSelection.UTxOIndex.Gen
+    Cardano.CoinSelection.UTxOIndex.Internal
+    Cardano.CoinSelection.UTxOSelection
+    Cardano.CoinSelection.UTxOSelection.Gen
+  default-language:   Haskell2010
+  default-extensions:
+    NoImplicitPrelude
+    OverloadedStrings
+  ghc-options: -Wall -Wcompat -fwarn-redundant-constraints
+  if flag(release)
+    ghc-options: -O2 -Werror
+
+library cardano-numeric
+  import:
+    , dependency-base
+    , dependency-lattices
+    , dependency-safe
+  hs-source-dirs:  lib/numeric/src
+  exposed-modules: Cardano.Numeric.Util
+  default-language:   Haskell2010
+  default-extensions:
+    NoImplicitPrelude
+    OverloadedStrings
+  ghc-options: -Wall -Wcompat -fwarn-redundant-constraints
+  if flag(release)
+    ghc-options: -O2 -Werror
+
+library cardano-wallet-primitive
+  import:
+    , dependency-base
+    , dependency-bytestring
+    , dependency-commutative-semigroups
+    , dependency-containers
+    , dependency-deepseq
+    , dependency-hashable
+    , dependency-int-cast
+    , dependency-lattices
+    , dependency-memory
+    , dependency-MonadRandom
+    , dependency-monoid-subclasses
+    , dependency-monoidmap
+    , dependency-nothunks
+    , dependency-QuickCheck
+    , dependency-quiet
+    , dependency-random
+    , dependency-safe
+  build-depends:
+    , cardano-numeric
+    , cardano-wallet-test-utils
+  hs-source-dirs:  lib/primitive/lib
+  exposed-modules:
+    Cardano.Wallet.Primitive.Types.AssetId
+    Cardano.Wallet.Primitive.Types.AssetId.Gen
+    Cardano.Wallet.Primitive.Types.AssetName
+    Cardano.Wallet.Primitive.Types.AssetName.Gen
+    Cardano.Wallet.Primitive.Types.Coin
+    Cardano.Wallet.Primitive.Types.Coin.Gen
+    Cardano.Wallet.Primitive.Types.Hash
+    Cardano.Wallet.Primitive.Types.TokenBundle
+    Cardano.Wallet.Primitive.Types.TokenBundle.Gen
+    Cardano.Wallet.Primitive.Types.TokenMap
+    Cardano.Wallet.Primitive.Types.TokenMap.Gen
+    Cardano.Wallet.Primitive.Types.TokenPolicyId
+    Cardano.Wallet.Primitive.Types.TokenPolicyId.Gen
+    Cardano.Wallet.Primitive.Types.TokenQuantity
+    Cardano.Wallet.Primitive.Types.TokenQuantity.Gen
+    Control.Monad.Random.NonRandom
+  default-language:   Haskell2010
+  default-extensions:
+    NoImplicitPrelude
+    OverloadedStrings
+  ghc-options: -Wall -Wcompat -fwarn-redundant-constraints
+  if flag(release)
+    ghc-options: -O2 -Werror
+
+library cardano-wallet-test-utils
+  import:
+    , dependency-base
+    , dependency-containers
+    , dependency-fmt
+    , dependency-formatting
+    , dependency-generics-sop
+    , dependency-hspec
+    , dependency-int-cast
+    , dependency-lattices
+    , dependency-pretty-simple
+    , dependency-QuickCheck
+    , dependency-quickcheck-classes
+    , dependency-text
+  hs-source-dirs:  lib/test-utils/src
+  exposed-modules:
+    Test.QuickCheck.Extra
+    Test.Utils.Laws
+    Test.Utils.Laws.PartialOrd
+    Test.Utils.Pretty
+  default-language:   Haskell2010
+  default-extensions:
+    NoImplicitPrelude
+    OverloadedStrings
+  ghc-options: -Wall -Wredundant-constraints -Wcompat
+  if flag(release)
+    ghc-options: -Werror
+
+test-suite cardano-coin-selection-test
+  import:
+    , dependency-base
+    , dependency-bytestring
+    , dependency-containers
+    , dependency-generic-lens
+    , dependency-generics-sop
+    , dependency-hspec
+    , dependency-hspec-core
+    , dependency-int-cast
+    , dependency-lattices
+    , dependency-MonadRandom
+    , dependency-monoid-subclasses
+    , dependency-pretty-simple
+    , dependency-QuickCheck
+    , dependency-quickcheck-classes
+    , dependency-quickcheck-quid
+    , dependency-safe
+    , dependency-text
+    , dependency-transformers
+    , dependency-with-utf8
+  build-depends:
+    , cardano-coin-selection
+    , cardano-numeric
+    , cardano-wallet-primitive
+    , cardano-wallet-test-utils
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: lib/coin-selection/test/spec
+  main-is:        run-test-suite.hs
+  other-modules:
+    Cardano.CoinSelection.BalanceSpec
+    Cardano.CoinSelection.CollateralSpec
+    Cardano.CoinSelection.UTxOIndexSpec
+    Cardano.CoinSelection.UTxOSelectionSpec
+    Cardano.CoinSelectionSpec
+    Spec
+    SpecHook
+  build-tool-depends: hspec-discover:hspec-discover
+  default-language:   Haskell2010
+  default-extensions:
+    NoImplicitPrelude
+    OverloadedStrings
+  ghc-options:
+    -threaded -rtsopts -Wall
+    -with-rtsopts=-M2G -with-rtsopts=-N4
+  if flag(release)
+    ghc-options: -O2 -Werror
+
+test-suite cardano-numeric-test
+  import:
+    , dependency-base
+    , dependency-hspec
+    , dependency-QuickCheck
+  build-depends:
+    , cardano-numeric
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: lib/numeric/test/unit
+  main-is:        numeric-unit-test.hs
+  other-modules:  Cardano.Numeric.UtilSpec
+  build-tool-depends: hspec-discover:hspec-discover
+  default-language:   Haskell2010
+  default-extensions:
+    NoImplicitPrelude
+    OverloadedStrings
+  ghc-options: -threaded -rtsopts -Wall
+  if flag(release)
+    ghc-options: -O2 -Werror
+
+test-suite cardano-wallet-primitive-test
+  import:
+    , dependency-base
+    , dependency-containers
+    , dependency-hspec
+    , dependency-hspec-core
+    , dependency-QuickCheck
+    , dependency-quickcheck-classes
+    , dependency-quickcheck-instances
+    , dependency-quickcheck-monoid-subclasses
+    , dependency-with-utf8
+  build-depends:
+    , cardano-numeric
+    , cardano-wallet-primitive
+    , cardano-wallet-test-utils
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: lib/primitive/test/spec
+  main-is:        run-test-suite.hs
+  other-modules:
+    Cardano.Wallet.Primitive.Types.CoinSpec
+    Cardano.Wallet.Primitive.Types.TokenBundleSpec
+    Cardano.Wallet.Primitive.Types.TokenMapSpec
+    Cardano.Wallet.Primitive.Types.TokenQuantitySpec
+    Spec
+    SpecHook
+  build-tool-depends: hspec-discover:hspec-discover
+  default-language:   Haskell2010
+  default-extensions:
+    NoImplicitPrelude
+    OverloadedStrings
+  ghc-options:
+    -threaded -rtsopts -Wall
+    -with-rtsopts=-M2G -with-rtsopts=-N4
+  if flag(release)
+    ghc-options: -O2 -Werror
+
+test-suite cardano-wallet-test-utils-test
+  import:
+    , dependency-base
+    , dependency-containers
+    , dependency-extra
+    , dependency-generic-lens
+    , dependency-generics-sop
+    , dependency-hspec
+    , dependency-lattices
+    , dependency-QuickCheck
+  build-depends:
+    , cardano-wallet-test-utils
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: lib/test-utils/test
+  main-is:        test-utils-unit-test.hs
+  other-modules:  Test.QuickCheck.ExtraSpec
+  build-tool-depends: hspec-discover:hspec-discover
+  default-language:   Haskell2010
+  default-extensions:
+    NoImplicitPrelude
+    OverloadedStrings
+  ghc-options: -threaded -rtsopts -Wall
+  if flag(release)
+    ghc-options: -O2 -Werror
+
+benchmark utxo-index
+  import:
+    , dependency-base
+    , dependency-bytestring
+    , dependency-containers
+    , dependency-deepseq
+    , dependency-format-numbers
+    , dependency-hashable
+    , dependency-QuickCheck
+    , dependency-tasty-bench
+    , dependency-text
+  build-depends:
+    , cardano-coin-selection
+    , cardano-wallet-primitive
+    , cardano-wallet-test-utils
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: lib/coin-selection/bench
+  main-is:        UTxOIndexBench.hs
+  default-language: Haskell2010
+  ghc-options: -Wall

@@ -1,5 +1,0 @@
-packages:
-  lib/coin-selection
-  lib/numeric
-  lib/primitive
-  lib/test-utils
