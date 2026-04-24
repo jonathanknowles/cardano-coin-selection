@@ -148,8 +148,7 @@ import Cardano.Wallet.Primitive.Types.Hash
     ( Hash (..)
     )
 import Cardano.Wallet.Primitive.Types.TokenBundle
-    ( Flat (..)
-    , TokenBundle (..)
+    ( TokenBundle (..)
     )
 import Cardano.Wallet.Primitive.Types.TokenBundle.Gen
     ( genTokenBundleSmallRangePositive
@@ -225,11 +224,6 @@ import Data.Tuple
 import Data.Word
     ( Word64
     , Word8
-    )
-import Fmt
-    ( Buildable (..)
-    , blockListF
-    , pretty
     )
 import Generics.SOP
     ( NP (..)
@@ -313,9 +307,6 @@ import Test.QuickCheck.Quid
     )
 import Test.Utils.Laws
     ( testLawsMany
-    )
-import Test.Utils.Pretty
-    ( Pretty (..)
     )
 
 import qualified Cardano.CoinSelection.Balance as SelectionParams
@@ -1365,13 +1356,13 @@ prop_runSelection_UTxO_moreThanEnough utxoAvailable strategy = monadicIO $ do
         "size assetsRequested >= 4"
     monitor $ counterexample $ unlines
         [ "balance available:"
-        , pretty (Flat balanceAvailable)
+        , show balanceAvailable
         , "balance requested:"
-        , pretty (Flat balanceRequested)
+        , show balanceRequested
         , "balance selected:"
-        , pretty (Flat balanceSelected)
+        , show balanceSelected
         , "balance leftover:"
-        , pretty (Flat balanceLeftover)
+        , show balanceLeftover
         ]
     assertWith
         "utxoAvailable `UTxOSelection.isSubSelectionOf` result"
@@ -1413,13 +1404,13 @@ prop_runSelection_UTxO_muchMoreThanEnough (Blind (Large index)) strategy =
             "size assetsRequested >= 4"
         monitor $ counterexample $ unlines
             [ "balance available:"
-            , pretty (Flat balanceAvailable)
+            , show balanceAvailable
             , "balance requested:"
-            , pretty (Flat balanceRequested)
+            , show balanceRequested
             , "balance selected:"
-            , pretty (Flat balanceSelected)
+            , show balanceSelected
             , "balance leftover:"
-            , pretty (Flat balanceLeftover)
+            , show balanceLeftover
             ]
         assertWith
             "utxoAvailable `UTxOSelection.isSubSelectionOf` result"
@@ -1733,7 +1724,7 @@ prop_assetSelectionLens_givesPriorityToSingletonAssets (Blind (Small u)) =
         monitor $ cover 20 (not hasSingletonAsset)
             "There are no singleton entries that match"
         monitor $ counterexample $ unlines
-            ["UTxO index:", pretty $ UTxOIndex.toList u]
+            ["UTxO index:", show $ UTxOIndex.toList u]
         mUpdatedState <- run $ runSelectionStep lens initialState
         case mUpdatedState of
             Nothing -> do
@@ -1770,7 +1761,7 @@ prop_coinSelectionLens_givesPriorityToCoins (Blind (Small u)) =
         monitor $ cover 1 (not hasCoin)
             "There are no coins"
         monitor $ counterexample $ unlines
-            ["UTxO index:", pretty $ UTxOIndex.toList u]
+            ["UTxO index:", show $ UTxOIndex.toList u]
         mUpdatedState <- run $ runSelectionStep lens initialState
         case mUpdatedState of
             Nothing -> do
@@ -2904,27 +2895,27 @@ prop_makeChange_success_delta p change =
     counterExampleText :: String
     counterExampleText = unlines
         [ "totalInputValue"
-        , pretty (Flat totalInputValue)
+        , show totalInputValue
         , "totalOutputValue"
-        , pretty (Flat totalOutputValue)
+        , show totalOutputValue
         , "required cost"
-        , pretty (Flat $ TokenBundle.fromCoin (view #requiredCost p))
+        , show (TokenBundle.fromCoin (view #requiredCost p))
         , "assetsToMint"
-        , pretty (Flat $ view #assetsToMint p)
+        , show (view #assetsToMint p)
         , "assetsToBurn"
-        , pretty (Flat $ view #assetsToBurn p)
+        , show (view #assetsToBurn p)
         , "change"
-        , pretty (Flat $ F.fold change)
+        , show (F.fold change)
         , "outputsToCover"
-        , pretty (Flat $ F.fold (outputBundles p))
+        , show (F.fold (outputBundles p))
         , "selected:"
-        , pretty (Flat $ F.fold (inputBundles p))
+        , show (F.fold (inputBundles p))
         , "totalChangeValue:"
-        , pretty totalChangeCoin
+        , show totalChangeCoin
         , "totalOutputValue:"
-        , pretty totalOutputCoin
+        , show totalOutputCoin
         , "totalInputValue:"
-        , pretty totalInputCoin
+        , show totalInputCoin
         ]
     totalInputValue =
         F.fold (inputBundles p)
@@ -2963,9 +2954,9 @@ prop_makeChange_success_minValueRespected p =
       where
         counterexampleText = unlines
             [ "bundle:"
-            , pretty (Flat m)
+            , show m
             , "minCoinValue:"
-            , pretty minCoinValue
+            , show minCoinValue
             ]
         minCoinValue = minCoinValueFor tokens
 
@@ -2984,7 +2975,7 @@ prop_makeChange_fail_costTooBig p =
             totalOutputValue
     in
         deltaCoin < view #requiredCost p
-            & counterexample ("delta: " <> pretty deltaCoin)
+            & counterexample ("delta: " <> show deltaCoin)
   where
     totalInputValue =
         F.fold (inputBundles p)
@@ -3030,11 +3021,11 @@ prop_makeChange_fail_minValueTooBig p =
           where
             counterexampleText = unlines
                 [ "change:"
-                , pretty (blockListF (Flat <$> change))
+                , show change
                 , "delta:"
-                , pretty deltaCoin
+                , show deltaCoin
                 , "totalMinCoinDeposit:"
-                , pretty totalMinCoinDeposit
+                , show totalMinCoinDeposit
                 ]
             deltaCoin = TokenBundle.getCoin $
                 totalInputValue <\>
@@ -4344,16 +4335,11 @@ instance SC.SelectionContext TestSelectionContext where
 
 newtype TestAddress = TestAddress (Hexadecimal Quid)
     deriving Arbitrary via Quid
-    deriving Buildable via (Pretty TestAddress)
     deriving stock (Eq, Ord, Read, Show)
 
 newtype TestUTxO = TestUTxO (Hexadecimal Quid)
     deriving (Arbitrary, CoArbitrary) via Quid
-    deriving Buildable via (Pretty TestUTxO)
     deriving stock (Eq, Ord, Read, Show)
-
-instance Buildable (TestUTxO, TokenBundle) where
-    build (u, b) = build u <> ":" <> build (Flat b)
 
 --------------------------------------------------------------------------------
 -- Arbitrary instances

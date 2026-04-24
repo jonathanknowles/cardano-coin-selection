@@ -4,7 +4,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -40,9 +39,7 @@ import Cardano.Wallet.Primitive.Types.Hash
     ( Hash (..)
     )
 import Cardano.Wallet.Primitive.Types.TokenMap
-    ( Flat (..)
-    , Lexicographic (..)
-    , Nested (..)
+    ( Lexicographic (..)
     , TokenMap
     )
 import Cardano.Wallet.Primitive.Types.TokenMap.Gen
@@ -69,17 +66,6 @@ import Cardano.Wallet.Primitive.Types.TokenQuantity.Gen
 import Control.Monad
     ( replicateM
     )
-import Data.Bifunctor
-    ( bimap
-    , first
-    , second
-    )
-import Data.ByteString
-    ( ByteString
-    )
-import Data.Either
-    ( fromRight
-    )
 import Data.Function
     ( (&)
     )
@@ -92,27 +78,10 @@ import Data.Maybe
 import Data.Ratio
     ( (%)
     )
-import Data.String.QQ
-    ( s
-    )
-import Data.Text
-    ( Text
-    )
-import Data.Text.Class
-    ( fromText
-    )
-import Fmt
-    ( pretty
-    )
-import Numeric.Natural
-    ( Natural
-    )
 import Test.Hspec
-    ( Expectation
-    , Spec
+    ( Spec
     , describe
     , it
-    , shouldBe
     )
 import Test.Hspec.Core.QuickCheck
     ( modifyMaxSuccess
@@ -169,14 +138,12 @@ import Test.Utils.Laws.PartialOrd
     ( partialOrdLaws
     )
 
-import qualified Cardano.Wallet.Primitive.Types.AssetName as AssetName
 import qualified Cardano.Wallet.Primitive.Types.TokenMap as TokenMap
 import qualified Cardano.Wallet.Primitive.Types.TokenQuantity as TokenQuantity
 import qualified Data.Foldable as F
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
-import qualified Data.Text as T
 import qualified Test.QuickCheck as QC
 
 spec :: Spec
@@ -305,12 +272,6 @@ spec =
             prop_genTokenMapPartition_length & property
         it "prop_genTokenMapPartition_nonPositive" $
             prop_genTokenMapPartition_nonPositive & property
-
-    describe "Textual serialization" $ do
-        it "Flat style" $
-            property testPrettyFlat
-        it "Nested style" $
-            property testPrettyNested
 
 --------------------------------------------------------------------------------
 -- Construction and deconstruction properties
@@ -666,90 +627,6 @@ prop_genTokenMapPartition_nonPositive m (QC.NonPositive (QC.Small i)) =
     forAll (genTokenMapPartition m i) (=== pure m)
 
 --------------------------------------------------------------------------------
--- Textual serialization
---------------------------------------------------------------------------------
-
-testPrettyFlat :: Expectation
-testPrettyFlat =
-    pretty (Flat testMap) `shouldBe` testMapPrettyFlat
-
-testPrettyNested :: Expectation
-testPrettyNested =
-    pretty (Nested testMap) `shouldBe` testMapPrettyNested
-
-testMap :: TokenMap
-testMap = testMapData
-    & fmap (second TokenQuantity)
-    & fmap (first (bimap dummyTokenPolicyId dummyAssetName))
-    & fmap (first (uncurry AssetId))
-    & TokenMap.fromFlatList
-
-testMapData :: [((Char, ByteString), Natural)]
-testMapData =
-    [ (('A', "APPLE"    ), 1)
-    , (('A', "AVOCADO"  ), 2)
-    , (('B', "BANANA"   ), 3)
-    , (('B', "BLUEBERRY"), 4)
-    ]
-
-testMapPrettyFlat :: Text
-testMapPrettyFlat = [s|
-- policyId: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-  assetName: 4150504c45
-  quantity: 1
-- policyId: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-  assetName: 41564f4341444f
-  quantity: 2
-- policyId: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-  assetName: 42414e414e41
-  quantity: 3
-- policyId: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-  assetName: 424c55454245525259
-  quantity: 4
-|]
-
-testMapPrettyNested :: Text
-testMapPrettyNested = [s|
-- policyId: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-  tokens:
-    - assetName: 4150504c45
-      quantity: 1
-    - assetName: 41564f4341444f
-      quantity: 2
-- policyId: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
-  tokens:
-    - assetName: 42414e414e41
-      quantity: 3
-    - assetName: 424c55454245525259
-      quantity: 4
-|]
-
---------------------------------------------------------------------------------
--- Utilities
---------------------------------------------------------------------------------
-
-dummyAssetName :: ByteString -> AssetName
-dummyAssetName t = fromRight reportError $ AssetName.fromByteString t
-  where
-    reportError = error $
-        "Unable to construct dummy asset name from bytes: " <> show t
-
--- The input must be a character in the range [0-9] or [A-Z].
---
-dummyTokenPolicyId :: Char -> TokenPolicyId
-dummyTokenPolicyId c
-    = fromRight reportError
-    $ fromText
-    $ T.pack
-    $ replicate tokenPolicyIdHexStringLength c
-  where
-    reportError = error $
-        "Unable to construct dummy token policy id from character: " <> show c
-
-tokenPolicyIdHexStringLength :: Int
-tokenPolicyIdHexStringLength = 56
-
---------------------------------------------------------------------------------
 -- Arbitrary instances
 --------------------------------------------------------------------------------
 
@@ -762,14 +639,6 @@ newtype Positive a = Positive
     deriving (Eq, Show)
 
 deriving newtype instance Arbitrary (Lexicographic TokenMap)
-
-instance Arbitrary a => Arbitrary (Flat a) where
-    arbitrary = Flat <$> arbitrary
-    shrink = fmap Flat . shrink . getFlat
-
-instance Arbitrary a => Arbitrary (Nested a) where
-    arbitrary = Nested <$> arbitrary
-    shrink = fmap Nested . shrink . getNested
 
 instance Arbitrary a => Arbitrary (NonEmpty a) where
     arbitrary = (:|) <$> arbitrary <*> arbitrary

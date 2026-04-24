@@ -17,21 +17,6 @@ import Prelude
 import Control.DeepSeq
     ( NFData
     )
-import Control.Monad
-    ( (>=>)
-    )
-import Data.Aeson
-    ( FromJSON (..)
-    , ToJSON (..)
-    )
-import Data.Bifunctor
-    ( first
-    )
-import Data.ByteArray.Encoding
-    ( Base (Base16)
-    , convertFromBase
-    , convertToBase
-    )
 import Data.ByteString
     ( ByteString
     )
@@ -41,14 +26,6 @@ import Data.Data
 import Data.Hashable
     ( Hashable
     )
-import Data.Text.Class
-    ( FromText (..)
-    , TextDecodingError (..)
-    , ToText (..)
-    )
-import Fmt
-    ( Buildable (..)
-    )
 import GHC.Generics
     ( Generic
     )
@@ -57,7 +34,6 @@ import Quiet
     )
 
 import qualified Data.ByteString as BS
-import qualified Data.Text.Encoding as T
 
 -- | Asset names, defined by the monetary policy script.
 newtype AssetName =
@@ -91,21 +67,3 @@ maxLength :: Int
 maxLength = 32
 
 instance NFData AssetName
-
-instance Buildable AssetName where
-    build = build . toText
-
-instance FromJSON AssetName where
-    parseJSON = parseJSON >=> either (fail . show) pure . fromText
-
-instance ToJSON AssetName where
-    toJSON = toJSON . toText
-
-instance ToText AssetName where
-    toText = T.decodeLatin1 . convertToBase Base16 . unAssetName
-
-instance FromText AssetName where
-    fromText = first TextDecodingError
-        . either (Left . ("AssetName is not hex-encoded: " ++)) fromByteString
-        . convertFromBase Base16
-        . T.encodeUtf8

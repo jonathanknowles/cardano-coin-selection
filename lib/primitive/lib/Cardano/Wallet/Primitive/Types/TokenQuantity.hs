@@ -2,7 +2,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Cardano.Wallet.Primitive.Types.TokenQuantity
     (
@@ -44,10 +43,6 @@ import Cardano.Numeric.Util
 import Control.DeepSeq
     ( NFData (..)
     )
-import Data.Aeson
-    ( FromJSON (..)
-    , ToJSON (..)
-    )
 import Data.Data
     ( Data
     )
@@ -83,13 +78,6 @@ import Data.Monoid.Null
 import Data.Semigroup.Commutative
     ( Commutative
     )
-import Data.Text.Class
-    ( FromText (..)
-    , ToText (..)
-    )
-import Fmt
-    ( Buildable (..)
-    )
 import GHC.Generics
     ( Generic
     )
@@ -122,24 +110,6 @@ newtype TokenQuantity = TokenQuantity
     deriving (LeftReductive, RightReductive, Reductive) via Sum Natural
     deriving (LeftGCDMonoid, RightGCDMonoid, GCDMonoid) via Sum Natural
     deriving (OverlappingGCDMonoid, Monus) via Sum Natural
-
---------------------------------------------------------------------------------
--- Instances
---------------------------------------------------------------------------------
-
-instance Buildable TokenQuantity where
-    build = build . toText . unTokenQuantity
-
-instance ToText TokenQuantity where
-    toText = toText . unTokenQuantity
-
-instance FromText TokenQuantity where
-    fromText = fmap (TokenQuantity . fromIntegral @Integer) . fromText
-
-instance FromJSON TokenQuantity where
-    parseJSON = fmap TokenQuantity . parseJSON
-instance ToJSON TokenQuantity where
-    toJSON = toJSON . unTokenQuantity
 
 --------------------------------------------------------------------------------
 -- Values

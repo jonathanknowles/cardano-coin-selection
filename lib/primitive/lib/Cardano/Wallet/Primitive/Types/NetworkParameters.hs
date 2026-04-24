@@ -18,9 +18,6 @@ import Cardano.Wallet.Primitive.Types.SlottingParameters
 import Control.DeepSeq
     ( NFData
     )
-import Fmt
-    ( Buildable (..)
-    )
 import GHC.Generics
     ( Generic
     )
@@ -38,6 +35,3 @@ data NetworkParameters = NetworkParameters
     deriving (Generic, Show, Eq)
 
 instance NFData NetworkParameters
-
-instance Buildable NetworkParameters where
-    build (NetworkParameters gp sp pp) = build gp <> build sp <> build pp

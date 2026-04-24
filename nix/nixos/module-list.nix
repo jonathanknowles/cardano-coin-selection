@@ -1,3 +1,0 @@
-[
-  ./cardano-wallet-service.nix
-]

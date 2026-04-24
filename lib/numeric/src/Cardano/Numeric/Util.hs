@@ -15,9 +15,6 @@ module Cardano.Numeric.Util
       -- * Partial orders
     , inAscendingPartialOrder
 
-      -- * Monomorphic functions
-    , power
-
     ) where
 
 import Prelude hiding
@@ -316,14 +313,3 @@ round :: (RealFrac a, Integral b) => RoundingDirection -> a -> b
 round = \case
     RoundUp -> ceiling
     RoundDown -> floor
-
---------------------------------------------------------------------------------
--- Monomorphic functions
---------------------------------------------------------------------------------
-
--- | Power function where all arguments are of the same type.
---
--- Helps to avoid the use of boilerplate type annotations.
---
-power :: Integral a => a -> a -> a
-power = (^)

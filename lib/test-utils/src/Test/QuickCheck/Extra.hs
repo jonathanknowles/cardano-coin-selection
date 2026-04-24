@@ -1,12 +1,9 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -24,7 +21,6 @@ module Test.QuickCheck.Extra
       genFunction
     , genSized2
     , genSized2With
-    , reasonablySized
 
     -- * Generating values purely
     , GenSeed (..)
@@ -36,35 +32,13 @@ module Test.QuickCheck.Extra
     , liftShrinker
     , shrinkInterleaved
     , groundRobinShrink
-    , groundRobinShrink'
     , genericRoundRobinShrink
-    , genericRoundRobinShrink'
     , (<@>)
     , (<:>)
 
-      -- * Evaluating shrinkers
-    , genShrinkSequence
-    , shrinkSpace
-    , shrinkWhile
-    , shrinkWhileSteps
-
-      -- * Partitioning lists
-    , partitionList
-
-      -- * Generating and shrinking sets
-    , genNonEmptyDisjointSet
-
       -- * Generating and shrinking maps
     , genMapWith
-    , genMapFromKeysWith
-    , genNonEmptyDisjointMap
-    , shrinkMapToSubmaps
     , shrinkMapWith
-    , shrinkMapValuesWith
-
-      -- * Selecting entries from maps
-    , selectMapEntry
-    , selectMapEntries
 
       -- * Generating and shrinking natural numbers
     , chooseNatural
@@ -74,30 +48,12 @@ module Test.QuickCheck.Extra
     , genNonEmpty
     , shrinkNonEmpty
 
-      -- * Labelling
-    , labelInterval
-
       -- * Counterexamples
     , report
     , verify
 
-      -- * Expectations
-    , (.>=.)
-
       -- * Pretty-printing
     , Pretty (..)
-
-      -- * Combinators
-    , NotNull (..)
-    , ScaleDiv (..)
-    , ScaleMod (..)
-
-      -- * Disjoint pairs
-    , DisjointPair
-    , makeDisjointPair
-    , getDisjointPair
-    , genDisjointPair
-    , shrinkDisjointPair
 
       -- * Utilities
     , interleaveRoundRobin
@@ -106,11 +62,6 @@ module Test.QuickCheck.Extra
 
 import Prelude
 
-import Control.Monad
-    ( foldM
-    , liftM2
-    , replicateM
-    )
 import Data.IntCast
     ( intCast
     , intCastMaybe
@@ -122,14 +73,7 @@ import Data.Map.Strict
     ( Map
     )
 import Data.Maybe
-    ( listToMaybe
-    , mapMaybe
-    )
-import Data.Monoid.Monus
-    ( Monus ((<\>))
-    )
-import Data.Set
-    ( Set
+    ( mapMaybe
     )
 import Fmt
     ( indentF
@@ -137,26 +81,16 @@ import Fmt
     , (|+)
     )
 import Generics.SOP
-import GHC.TypeNats
-    ( KnownNat
-    , Nat
-    , natVal
-    , type (<=)
-    )
 import Numeric.Natural
     ( Natural
     )
 import Test.QuickCheck
     ( Arbitrary (..)
     , Gen
-    , Positive (getPositive)
     , Property
     , Testable
-    , chooseInt
     , chooseInteger
     , counterexample
-    , elements
-    , label
     , liftArbitrary2
     , liftShrink2
     , listOf
@@ -165,7 +99,6 @@ import Test.QuickCheck
     , shrinkIntegral
     , shrinkList
     , shrinkMapBy
-    , suchThat
     , suchThatMap
     , (.&&.)
     )
@@ -188,31 +121,9 @@ import Text.Pretty.Simple
 import qualified Data.List as L
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
-import qualified Data.Set as Set
 import qualified Data.Text.Lazy as TL
 import qualified Generics.SOP.GGP as GGP
 import qualified GHC.Generics as GHC
-
--- | Resize a generator to grow with the size parameter, but remains reasonably
--- sized. That is handy when testing on data-structures that can be arbitrarily
--- large and, when large entities don't really bring any value to the test
--- itself.
---
--- It uses a square root function which makes the size parameter grows
--- quadratically slower than normal. That is,
---
---     +-------------+------------------+
---     | Normal Size | Reasonable Size  |
---     | ----------- + ---------------- +
---     | 0           | 0                |
---     | 1           | 1                |
---     | 10          | 3                |
---     | 100         | 10               |
---     | 1000        | 31               |
---     +-------------+------------------+
---
-reasonablySized :: Gen a -> Gen a
-reasonablySized = scale (ceiling . sqrt @Double . fromIntegral)
 
 -- | Resizes a generator by taking the nth root of the size parameter.
 --
@@ -309,262 +220,6 @@ generateWith (GenSeed seed) (GenSize size) (MkGen runGen) =
     runGen (mkQCGen seed) size
 
 --------------------------------------------------------------------------------
--- Evaluating shrinkers
---------------------------------------------------------------------------------
-
--- | Generates a random sequence of progressively shrunken values from a given
---   starting value and shrinking function.
---
--- Each successive element in the sequence is selected at random from the
--- result of applying the shrinking function to the preceding element.
---
--- The given starting value is not included in the sequence, by default.
---
--- Examples:
---
--- >>> generate (genShrinkSequence shrink (100 :: Int))
--- [94,83,82,72,70,66,33,32,16,0]
---
--- >>> generate (genShrinkSequence shrink "Cardano")
--- ["Caraano","aaraano","aaraaao","aaro","aarb","aaab","aab","aa",""]
---
--- The resulting sequence will be empty if (and only if) applying the shrinking
--- function to the starting value yields the empty list:
---
--- >>> generate (genShrinkSequence (const []) "Cardano")
--- []
---
--- If the resulting sequence is non-empty, then applying the shrinking function
--- to the terminal element will yield the empty list:
---
--- >>> shrink . last <$> generate (genShrinkSequence shrink (100 :: Int))
--- []
---
-genShrinkSequence :: forall a. (a -> [a]) -> a -> Gen [a]
-genShrinkSequence shrinkFn = loop
-  where
-    loop :: a -> Gen [a]
-    loop a = case shrinkFn a of
-        [] -> pure []
-        as -> liftM2 fmap (:) loop =<< elements as
-
--- | Computes the shrink space of a given shrinking function for a given
---   starting value.
---
--- This function returns the set of all values that are transitively reachable
--- through repeated applications of the given shrinking function to the given
--- starting value.
---
--- By default, the given starting value is not included in the result.
---
--- Examples:
---
--- >>> shrinkSpace shrink "abc"
--- ["","a","aa","aaa","aab","aac","ab","aba","abb","ac","b","ba","bb","bc","c"]
---
--- >>> shrinkSpace shrink (8 :: Int)
--- [0,1,2,3,4,5,6,7]
---
--- >>> shrinkSpace shrink (2 :: Int, 2 :: Int)
--- [(0,0),(0,1),(0,2),(1,0),(1,1),(1,2),(2,0),(2,1)]
---
--- Caution:
---
--- Depending on the particular choice of shrinking function and starting value,
--- the shrink space can grow very quickly. Therefore, this function should be
--- used with caution to avoid non-termination within test cases. If in doubt,
--- use the 'within' modifier provided by QuickCheck to ensure that your test
--- case terminates within a fixed time limit.
---
--- This function can be used to test that a given shrinking function always
--- generates values that satisfy a given condition. For example:
---
--- @
--- prop_shrinkApple_valid :: Apple -> Property
--- prop_shrinkApple_valid apple =
---     within twoSeconds $
---     all isValidApple (shrinkSpace shrinkApple apple)
---   where
---     twoSeconds = 2_000_000
--- @
---
-shrinkSpace :: forall a. Ord a => (a -> [a]) -> a -> Set a
-shrinkSpace shrinkFn = loop mempty . Set.fromList . shrinkFn
-  where
-    -- Loop invariant: "processed" and "remaining" are always disjoint sets:
-    --
-    loop :: Set a -> Set a -> Set a
-    loop !processed !remaining
-        | Set.null remaining =
-            processed
-        | otherwise =
-            loop processedNew remainingNew
-      where
-        remainingFirst :: a
-        remainingFirst = Set.elemAt 0 remaining
-
-        remainingNew :: Set a
-        remainingNew =
-            Set.difference
-                (Set.union remaining (Set.fromList $ shrinkFn remainingFirst))
-                (processedNew)
-
-        processedNew :: Set a
-        processedNew = Set.insert remainingFirst processed
-
--- | Repeatedly applies a shrinking function to a value while a condition holds.
---
--- This function can be used to predict the final value that QuickCheck will
--- produce when searching for a minimal counterexample.
---
--- Example:
---
--- >>> isCounterexample a = (a > 0) && (a `mod` 8 == 0)
--- >>> shrinkWhile isCounterexample shrinkIntegral 1024
--- Just 8
---
--- Provided that the given starting value satisfies the condition, and provided
--- that at least one shrunken value satisfies the condition, this function will
--- terminate with the smallest shrunken value that cannot be shrunk further
--- with the given shrinking function.
---
--- This function returns 'Nothing' if the given starting value does not satisfy
--- the condition, or if none of the shrunken values satisfy the condition.
---
--- The final result is evaluated eagerly. If you suspect that a given shrinking
--- sequence does not terminate, then you may wish to consider evaluating a
--- finite prefix of 'shrinkWhileSteps' instead.
---
-shrinkWhile :: (a -> Bool) -> (a -> [a]) -> a -> Maybe a
-shrinkWhile condition shrinkFn =
-    listToMaybe . reverse . shrinkWhileSteps condition shrinkFn
-
--- | Repeatedly applies a shrinking function to a value while a condition holds,
---   returning all the intermediate shrinking steps.
---
--- This function can be used to predict the sequence of intermediate values
--- that QuickCheck will produce when searching for a minimal counterexample.
---
--- Example:
---
--- >>> isCounterexample = (>= 100)
--- >>> shrinkWhileSteps isCounterexample shrinkIntegral 1024
--- [512,256,128,112,105,102,101,100]
---
--- Provided that the given starting value satisfies the condition, and provided
--- that at least one shrunken value satisfies the condition, this function will
--- produce a non-empty list of all intermediate shrinking steps, ordered from
--- largest to smallest.
---
--- The list is evaluated lazily from largest to smallest. If you suspect that a
--- given shrinking sequence does not terminate, then you may wish to consider
--- evaluating a finite prefix of the list.
---
--- This function returns the empty list if the given starting value does not
--- satisfy the condition, or if none of the shrunken values satisfy the
--- condition.
---
-shrinkWhileSteps :: forall a. (a -> Bool) -> (a -> [a]) -> a -> [a]
-shrinkWhileSteps condition shrinkFn a
-    | condition a = steps a
-    | otherwise = []
-  where
-    steps :: a -> [a]
-    steps = maybe [] (\y -> y : steps y) . L.find condition . shrinkFn
-
---------------------------------------------------------------------------------
--- Generating list partitions
---------------------------------------------------------------------------------
-
--- | Partitions a list into a list of sublists.
---
--- Each sublist in the result has a randomly-chosen length that is bounded by
--- the given minimum and maximum length parameters, with the exception of the
--- last sublist, which may be shorter than the minimum length.
---
--- Examples:
---
--- >>> generate (partitionList (0, 1) [1 .. 4])
--- [[], [1], [2], [], [3], [4]]
---
--- >>> generate (partitionList (1, 4) [1 .. 10])
--- [[1, 2], [3, 4, 5, 6], [7], [8, 9, 10]]
---
--- >>> generate (partitionList (4, 8) "Books are the liberated spirits of men.")
--- ["Books ar", "e the l", "iberat", "ed spir", "its of", " men."]
---
--- Assuming the following definitions of checked minimum and maximum lengths:
---
--- >>> x' = max 0 x
--- >>> y' = max 1 (max y x')
---
--- This function satisfies the following properties:
---
--- prop> forAll (partitionList (x, y) as) $ (== as) . mconcat
--- prop> forAll (partitionList (x, y) as) $ all ((>= x') . length) . dropEnd 1
--- prop> forAll (partitionList (x, y) as) $ all ((<= y') . length)
---
-partitionList
-    :: (Int, Int)
-    -- ^ The minimum and maximum length parameters.
-    -> [a]
-    -- ^ The list to be partitioned.
-    -> Gen [[a]]
-    -- ^ The partitioned list.
-partitionList (x, y) =
-    fmap reverse . loop []
-  where
-    loop :: [[a]] -> [a] -> Gen [[a]]
-    loop cs [] = pure cs
-    loop cs rs = do
-        (c, ss) <- genChunk rs
-        loop (c : cs) ss
-
-    genChunk :: [a] -> Gen ([a], [a])
-    genChunk available = do
-        chunkLength <- chooseInt (x', y')
-        pure $ splitAt chunkLength available
-
-    x' = max 0 x
-    y' = max 1 (max y x')
-
---------------------------------------------------------------------------------
--- Selecting random map entries
---------------------------------------------------------------------------------
-
--- | Selects an entry at random from the given map.
---
--- Returns the selected entry and the remaining map with the entry removed.
---
--- Returns 'Nothing' if (and only if) the given map is empty.
---
-selectMapEntry
-    :: forall k v. Ord k => Map k v -> Gen (Maybe ((k, v), Map k v))
-selectMapEntry m
-    | Map.null m =
-        pure Nothing
-    | otherwise =
-        Just . selectAndRemoveElemAt <$> chooseInt (0, Map.size m - 1)
-  where
-    selectAndRemoveElemAt :: Int -> ((k, v), Map k v)
-    selectAndRemoveElemAt =
-        (\(k, v) -> ((k, v), Map.delete k m)) . flip Map.elemAt m
-
--- | Selects up to a given number of entries at random from the given map.
---
--- Returns the selected entries and the remaining map with the entries removed.
---
-selectMapEntries
-    :: forall k v. Ord k => Map k v -> Int -> Gen ([(k, v)], Map k v)
-selectMapEntries m0 i =
-    foldM (const . selectOne) ([], m0) (replicate i ())
-  where
-    selectOne :: ([(k, v)], Map k v) -> Gen ([(k, v)], Map k v)
-    selectOne (es, m) = selectMapEntry m >>= \case
-        Nothing -> pure (es, m)
-        Just (e, m') -> pure (e : es, m')
-
---------------------------------------------------------------------------------
 -- Generating and shrinking natural numbers
 --------------------------------------------------------------------------------
 
@@ -602,24 +257,6 @@ genFunction :: (a -> Gen b -> Gen b) -> Gen b -> Gen (a -> b)
 genFunction coarbitraryFn gen = promote (`coarbitraryFn` gen)
 
 --------------------------------------------------------------------------------
--- Generating and shrinking sets
---------------------------------------------------------------------------------
-
--- | Generates a non-empty 'Set' that is disjoint to an existing 'Set'.
---
--- The size of the resultant set depends on the implicit size parameter.
---
--- Caution: if the given generator is incapable of generating values that are
--- outside the existing set, then this function will not terminate.
---
-genNonEmptyDisjointSet :: Ord a => Gen a -> Set a -> Gen (Set a)
-genNonEmptyDisjointSet genElement0 existingElements = do
-    size <- getPositive <$> arbitrary @(Positive Int)
-    Set.fromList <$> replicateM size genElement
-  where
-    genElement = genElement0 `suchThat` (`Set.notMember` existingElements)
-
---------------------------------------------------------------------------------
 -- Generating and shrinking key-value maps
 --------------------------------------------------------------------------------
 
@@ -628,39 +265,6 @@ genNonEmptyDisjointSet genElement0 existingElements = do
 genMapWith :: Ord k => Gen k -> Gen v -> Gen (Map k v)
 genMapWith genKey genValue =
     Map.fromList <$> listOf (liftArbitrary2 genKey genValue)
-
--- | Generates a 'Map' from a set of keys and a value generation function.
---
-genMapFromKeysWith :: Ord k => Gen v -> Set k -> Gen (Map k v)
-genMapFromKeysWith genValue =
-    fmap Map.fromList . mapM (\k -> (k,) <$> genValue) . Set.toList
-
--- | Generates a non-empty 'Map' that is disjoint to an existing 'Map'.
---
--- The size of the resultant map depends on the implicit size parameter.
---
--- Caution: if the given key generator is incapable of generating keys that are
--- outside the existing map's domain, then this function will not terminate.
---
-genNonEmptyDisjointMap :: Ord k => Gen k -> Gen v -> Map k v -> Gen (Map k v)
-genNonEmptyDisjointMap genKey genValue existingMap =
-    genMapFromKeysWith genValue =<<
-    genNonEmptyDisjointSet genKey (Map.keysSet existingMap)
-
--- | Shrinks a 'Map' to list of proper submaps.
---
--- Satisfies the following property:
---
--- @
--- all (`Map.isProperSubmapOf` m) (shrinkMapToSubmaps m)
--- @
---
-shrinkMapToSubmaps :: Ord k => Map k v -> [Map k v]
-shrinkMapToSubmaps =
-    shrinkMapBy Map.fromList Map.toList shrinkListToSublist
-  where
-    shrinkListToSublist :: [a] -> [[a]]
-    shrinkListToSublist = shrinkList (const [])
 
 -- | Shrinks a 'Map' with the given key and value shrinking functions.
 --
@@ -674,74 +278,6 @@ shrinkMapWith shrinkKey shrinkValue
     = shrinkMapBy Map.fromList Map.toList
     $ shrinkList
     $ liftShrink2 shrinkKey shrinkValue
-
--- | Shrinks just the values of a 'Map', keeping the set of keys constant.
---
-shrinkMapValuesWith :: forall k v. Ord k => (v -> [v]) -> Map k v -> [Map k v]
-shrinkMapValuesWith shrinkValue =
-    shrinkMapBy Map.fromList Map.toList shrinkKeyValuePairs
-  where
-    shrinkKeyValuePairs :: [(k, v)] -> [[(k, v)]]
-    shrinkKeyValuePairs = \case
-        ((k, v) : rest) -> mconcat
-            -- First shrink the first element
-            [ map (\v' -> (k, v') : rest) (shrinkValue v)
-            -- Recurse to shrink subsequent elements on their own
-            , map ((k, v) :) (shrinkKeyValuePairs rest)
-            ]
-        [] -> []
-
---------------------------------------------------------------------------------
--- Labelling
---------------------------------------------------------------------------------
-
--- | Partitions the integer number line into intervals of the given size, and
---   produces a label indicating within which inclusive interval the given
---   value falls.
---
--- This combinator can be used to report the distribution of an arbitrary
--- integral value during a test run.
---
--- Example:
---
--- >>> quickCheck $ \(Positive foo) -> labelInterval 10 "foo" foo True
--- +++ OK, passed 100 tests:
--- 35% "foo" within [0, 9]
--- 17% "foo" within [20, 29]
--- 15% "foo" within [10, 19]
--- 10% "foo" within [40, 49]
---  6% "foo" within [30, 39]
---  6% "foo" within [60, 69]
---  5% "foo" within [50, 59]
---  4% "foo" within [80, 89]
---  2% "foo" within [70, 79]
---
-labelInterval
-    :: (Integral i, Show i, Testable t)
-    => i
-    -- ^ Interval size
-    -> String
-    -- ^ Variable name
-    -> i
-    -- ^ Value to categorise
-    -> t
-    -- ^ Test to adjust
-    -> Property
-labelInterval intervalSize variableName valueToCategorise
-    | intervalSize <= 0 =
-        error "labelInterval: interval size must be greater than zero"
-    | otherwise =
-        label $ mconcat
-            [ show variableName
-            , " within ["
-            , show lo
-            , ", "
-            , show hi
-            , "]"
-            ]
-  where
-    lo = (valueToCategorise `div` intervalSize) * intervalSize
-    hi = lo + (pred intervalSize)
 
 --------------------------------------------------------------------------------
 -- Counterexamples
@@ -766,14 +302,6 @@ verify condition conditionTitle =
     counterexampleText = "Condition violated: " <> conditionTitle
 
 --------------------------------------------------------------------------------
--- Expectations
---------------------------------------------------------------------------------
-
-(.>=.) :: (Show a, Ord a) => a -> a -> Property
-a .>=. b = counterexample (show a <> " < " <> show b)
-    $ property $ a >= b
-
---------------------------------------------------------------------------------
 -- Pretty-printing
 --------------------------------------------------------------------------------
 
@@ -788,104 +316,6 @@ instance Show a => Show (Pretty a) where
 instance Arbitrary a => Arbitrary (Pretty a) where
     arbitrary = Pretty <$> arbitrary
     shrink (Pretty a) = Pretty <$> shrink a
-
---------------------------------------------------------------------------------
--- Non-null values
---------------------------------------------------------------------------------
-
-newtype NotNull a = NotNull { unNotNull :: a }
-    deriving (Eq, Show)
-
-instance (Arbitrary a, Eq a, Monoid a) => Arbitrary (NotNull a) where
-    arbitrary = NotNull <$> arbitrary `suchThat` (/= mempty)
-    shrink (NotNull u) = NotNull <$> filter (/= mempty) (shrink u)
-
---------------------------------------------------------------------------------
--- Adjusting the QuickCheck size parameter
---------------------------------------------------------------------------------
-
--- | Divides the QuickCheck size parameter by the given positive integer and
---   returns the quotient.
---
--- This combinator provides a convenient way to scale down the QuickCheck size
--- parameter for a particular property argument. This can be useful if you wish
--- to adjust the distribution of data for one property argument in isolation,
--- without affecting the distribution of data for other property arguments.
---
--- Example:
---
--- @
--- prop_foo :: Integer -> ScaleDiv 2 Integer -> Property
--- prop_foo x (ScaleDiv y) = ...
--- @
---
-newtype ScaleDiv (n :: Nat) a = ScaleDiv { unScaleDiv :: a }
-    deriving stock (Eq, Ord)
-    deriving (Read, Show) via a
-
-instance (Arbitrary a, KnownNat n, 1 <= n) => Arbitrary (ScaleDiv n a) where
-    arbitrary = ScaleDiv <$> scale (`div` n) arbitrary
-      where
-        n = fromIntegral $ natVal $ Proxy @n
-    shrink = shrinkMapBy ScaleDiv unScaleDiv shrink
-
--- | Divides the QuickCheck size parameter by the given positive integer and
---   returns the remainder.
---
--- This combinator provides a convenient way to scale down the QuickCheck size
--- parameter for a particular property argument. This can be useful if you wish
--- to adjust the distribution of data for one property argument in isolation,
--- without affecting the distribution of data for other property arguments.
---
--- Example:
---
--- @
--- prop_foo :: Integer -> ScaleMod 8 Integer -> Property
--- prop_foo x (ScaleMod y) = ...
--- @
---
-newtype ScaleMod (n :: Nat) a = ScaleMod { unScaleMod :: a }
-    deriving stock (Eq, Ord)
-    deriving (Read, Show) via a
-
-instance (Arbitrary a, KnownNat n, 1 <= n) => Arbitrary (ScaleMod n a) where
-    arbitrary = ScaleMod <$> scale (`mod` n) arbitrary
-      where
-        n = fromIntegral $ natVal $ Proxy @n
-    shrink = shrinkMapBy ScaleMod unScaleMod shrink
-
---------------------------------------------------------------------------------
--- Disjoint pairs
---------------------------------------------------------------------------------
-
--- | Represents a pair of values that are disjoint to one another.
---
--- A pair of values 'v1' and 'v2' are disjoint if and only if:
---
--- @
--- (v1 <\> v2 == v1) && (v2 <\> v1 == v2)
--- @
---
-data DisjointPair a = DisjointPair !a !a
-    deriving (Eq, Show)
-
-makeDisjointPair :: Monus a => a -> a -> DisjointPair a
-makeDisjointPair a1 a2 = DisjointPair (a1 <\> a2) (a2 <\> a1)
-
-getDisjointPair :: DisjointPair a -> (a, a)
-getDisjointPair (DisjointPair a1 a2) = (a1, a2)
-
-genDisjointPair :: Monus a => Gen a -> Gen (DisjointPair a)
-genDisjointPair genItem = makeDisjointPair <$> genItem <*> genItem
-
-shrinkDisjointPair
-    :: (Eq a, Monus a)
-    => (a -> [a])
-    -> (DisjointPair a -> [DisjointPair a])
-shrinkDisjointPair shrinkItem p@(DisjointPair a1 a2) =
-    filter (/= p) $
-    uncurry makeDisjointPair <$>
-    liftShrink2 shrinkItem shrinkItem (a1, a2)
 
 --------------------------------------------------------------------------------
 -- Generic shrinking
@@ -1029,32 +459,6 @@ groundRobinShrink
     -- ^ provide a list of shrunk values.
 groundRobinShrink f x = to <$> groundRobinShrinkS f (from x)
 
--- | Same as groundRobinShrink, but use the available shrinkers via Arbitrary
--- instance.
---
--- __Examples:__
---
--- @
--- shrinkBoolChar :: BoolChar -> [BoolChar]
--- shrinkBoolChar = groundRobinShrink'
--- @
-groundRobinShrink'
-    :: ( Generic a
-       -- The type is an instance of SOP.Generic
-       , Code a ~ '[xs]
-       , All Arbitrary xs
-       -- and each element of the constructor has an instance of arbitrary
-       )
-    => a
-    -- ^ Given such a type
-    -> [a]
-    -- ^ return a shrunk list of that product type, using the round-robin
-    -- algorithm.
-groundRobinShrink' x =
-    fmap to
-    $ groundRobinShrinkS (hcpure (Proxy @Arbitrary) (liftShrinker shrink))
-    $ from x
-
 -- | This function exists to provide a GHC.Generics version of
 -- @groundRobinShrink@, so that users of this code don't have to derive an
 -- instance of Generics.SOP.Generic; an instance of GHC.Generics.Generic will
@@ -1070,22 +474,6 @@ genericRoundRobinShrink
     -> [a]
 genericRoundRobinShrink f x =
     GGP.gto <$> groundRobinShrinkS f (GGP.gfrom x)
-
--- | Same as @genericRoundRobinShrink@ but uses available Arbitrary instance for
--- shrinking.
-genericRoundRobinShrink'
-    :: ( GHC.Generic a
-       , GGP.GFrom a
-       , GGP.GTo a
-       , GGP.GCode a ~ '[xs]
-       , All Arbitrary xs
-       )
-    => a
-    -> [a]
-genericRoundRobinShrink' x =
-    fmap GGP.gto
-    $ groundRobinShrinkS (hcpure (Proxy @Arbitrary) (liftShrinker shrink))
-    $ GGP.gfrom x
 
 --------------------------------------------------------------------------------
 -- Generic shrinking operators

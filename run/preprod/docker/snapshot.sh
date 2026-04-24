@@ -1,1 +1,0 @@
-../../common/nix/snapshot.sh

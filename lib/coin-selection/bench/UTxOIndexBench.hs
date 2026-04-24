@@ -22,7 +22,6 @@ import Cardano.Wallet.Primitive.Types.Coin
     )
 import Cardano.Wallet.Primitive.Types.Hash
     ( Hash (..)
-    , mockHash
     )
 import Cardano.Wallet.Primitive.Types.TokenBundle
     ( TokenBundle (..)
@@ -41,6 +40,9 @@ import Control.DeepSeq
     )
 import Control.Exception
     ( evaluate
+    )
+import Data.Hashable
+    ( Hashable (hash)
     )
 import Data.Map.Strict
     ( Map
@@ -77,6 +79,7 @@ import Test.Tasty.Bench
 import qualified Cardano.CoinSelection.UTxOIndex as UTxOIndex
 import qualified Cardano.Wallet.Primitive.Types.TokenBundle as TokenBundle
 import qualified Cardano.Wallet.Primitive.Types.TokenMap as TokenMap
+import qualified Data.ByteString.Char8 as B8
 import qualified Data.Map.Strict as Map
 import qualified Data.Text as T
 
@@ -258,6 +261,11 @@ minimalTokenQuantity = TokenQuantity 1
 --------------------------------------------------------------------------------
 -- Utilities
 --------------------------------------------------------------------------------
+
+-- | Constructs a hash that is good enough for testing.
+--
+mockHash :: Hashable a => a -> Hash whatever
+mockHash = Hash . B8.pack . show . hash
 
 -- | Pretty-prints a number with separators.
 --
