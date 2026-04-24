@@ -1,0 +1,7 @@
+packages: .
+
+package cardano-coin-selection
+  tests: True
+  benchmarks: True
+  ghc-options:
+    -Werror=unused-packages
